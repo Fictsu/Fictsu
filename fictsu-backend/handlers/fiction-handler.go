@@ -57,7 +57,7 @@ func GetAllFictions(ctx *gin.Context) {
 }
 
 func GetFiction(ctx *gin.Context) {
-	fiction_ID := ctx.Param("fiction_id")
+	fictionID := ctx.Param("fictionID")
 	fiction := models.FictionModel{}
 	err := db.DB.QueryRow(
 		`
@@ -69,7 +69,7 @@ func GetFiction(ctx *gin.Context) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
 		&fiction.ID,
 		&fiction.Contributor_ID,
@@ -95,14 +95,14 @@ func GetFiction(ctx *gin.Context) {
 	}
 
 	// Get genres of the fiction
-	genres, err := GetAllGenres(fiction_ID)
+	genres, err := GetAllGenres(fictionID)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
 
 	// Get chapters of the fiction
-	chapters, err := GetAllChapters(fiction_ID)
+	chapters, err := GetAllChapters(fictionID)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -114,50 +114,50 @@ func GetFiction(ctx *gin.Context) {
 }
 
 func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	name_from_session := session.Values["name"]
-	if ID_from_session == nil || name_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	nameFromSession := session.Values["name"]
+	if IDFromSession == nil || nameFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to create a fiction."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	name_to_DB := name_from_session.(string)
-	fiction_create_request := models.FictionModel{}
-	if err := ctx.ShouldBindJSON(&fiction_create_request); err != nil {
+	IDToDB := IDFromSession.(int)
+	nameToDB := nameFromSession.(string)
+	fictionCreateRequest := models.FictionModel{}
+	if err := ctx.ShouldBindJSON(&fictionCreateRequest); err != nil {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid data provided for fiction creation"})
 		return
 	}
 
-	fiction_create_request.Contributor_ID = ID_to_DB
-	fiction_create_request.Contributor_Name = name_to_DB
+	fictionCreateRequest.Contributor_ID = IDToDB
+	fictionCreateRequest.Contributor_Name = nameToDB
 
-	var new_fiction_ID int
-	var new_created_TS time.Time
+	var newFictionID int
+	var newCreatedTS time.Time
 	err := db.DB.QueryRow(
 		`
 		INSERT INTO Fictions (Contributor_ID, Contributor_Name, Cover, Title, Subtitle, Author, Artist, Status, Synopsis)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING ID, Created
 		`,
-		fiction_create_request.Contributor_ID,
-		fiction_create_request.Contributor_Name,
-		fiction_create_request.Cover,
-		fiction_create_request.Title,
-		fiction_create_request.Subtitle,
-		fiction_create_request.Author,
-		fiction_create_request.Artist,
-		fiction_create_request.Status,
-		fiction_create_request.Synopsis,
+		fictionCreateRequest.Contributor_ID,
+		fictionCreateRequest.Contributor_Name,
+		fictionCreateRequest.Cover,
+		fictionCreateRequest.Title,
+		fictionCreateRequest.Subtitle,
+		fictionCreateRequest.Author,
+		fictionCreateRequest.Artist,
+		fictionCreateRequest.Status,
+		fictionCreateRequest.Synopsis,
 	).Scan(
-		&new_fiction_ID,
-		&new_created_TS,
+		&newFictionID,
+		&newCreatedTS,
 	)
 
 	if err != nil {
@@ -165,30 +165,30 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	fiction_create_request.ID = new_fiction_ID
-	fiction_create_request.Created = new_created_TS
-	ctx.IndentedJSON(http.StatusCreated, fiction_create_request)
+	fictionCreateRequest.ID = newFictionID
+	fictionCreateRequest.Created = newCreatedTS
+	ctx.IndentedJSON(http.StatusCreated, fictionCreateRequest)
 }
 
 func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to edit the fiction."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
 	// Check if the fiction exists and if the contributor matches the logged-in user
-	var get_contributor_ID int
-	err_match := db.DB.QueryRow(
+	var getContributorID int
+	errMatch := db.DB.QueryRow(
 		`
 		SELECT
 			Contributor_ID
@@ -197,13 +197,13 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&get_contributor_ID,
+		&getContributorID,
 	)
 
-	if err_match != nil {
-		if err_match == sql.ErrNoRows {
+	if errMatch != nil {
+		if errMatch == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 			return
 		}
@@ -213,60 +213,60 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// Verify that the logged-in user is the contributor
-	if get_contributor_ID != ID_to_DB {
+	if getContributorID != IDToDB {
 		ctx.IndentedJSON(http.StatusForbidden, gin.H{"Error": "You do not have permission to edit this fiction"})
 		return
 	}
 
-	fiction_update_request := models.FictionModel{}
-	if err := ctx.ShouldBindJSON(&fiction_update_request); err != nil {
+	fictionUpdateRequest := models.FictionModel{}
+	if err := ctx.ShouldBindJSON(&fictionUpdateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid input data"})
 		return
 	}
 
 	query := "UPDATE Fictions SET "
 	params := []interface{}{}
-	param_index := 1
-	if fiction_update_request.Cover != "" {
-		query += "Cover = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Cover)
-		param_index++
+	paramIndex := 1
+	if fictionUpdateRequest.Cover != "" {
+		query += "Cover = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Cover)
+		paramIndex++
 	}
 
-	if fiction_update_request.Title != "" {
-		query += "Title = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Title)
-		param_index++
+	if fictionUpdateRequest.Title != "" {
+		query += "Title = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Title)
+		paramIndex++
 	}
 
-	if fiction_update_request.Subtitle != "" {
-		query += "Subtitle = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Subtitle)
-		param_index++
+	if fictionUpdateRequest.Subtitle != "" {
+		query += "Subtitle = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Subtitle)
+		paramIndex++
 	}
 
-	if fiction_update_request.Author != "" {
-		query += "Author = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Author)
-		param_index++
+	if fictionUpdateRequest.Author != "" {
+		query += "Author = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Author)
+		paramIndex++
 	}
 
-	if fiction_update_request.Artist != "" {
-		query += "Artist = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Artist)
-		param_index++
+	if fictionUpdateRequest.Artist != "" {
+		query += "Artist = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Artist)
+		paramIndex++
 	}
 
-	if fiction_update_request.Status != "" {
-		query += "Status = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Status)
-		param_index++
+	if fictionUpdateRequest.Status != "" {
+		query += "Status = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Status)
+		paramIndex++
 	}
 
-	if fiction_update_request.Synopsis != "" {
-		query += "Synopsis = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, fiction_update_request.Synopsis)
-		param_index++
+	if fictionUpdateRequest.Synopsis != "" {
+		query += "Synopsis = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, fictionUpdateRequest.Synopsis)
+		paramIndex++
 	}
 
 	if len(params) == 0 {
@@ -274,8 +274,8 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	query = query[:len(query) - 2] + " WHERE ID = $" + strconv.Itoa(param_index)
-	params = append(params, fiction_ID)
+	query = query[:len(query) - 2] + " WHERE ID = $" + strconv.Itoa(paramIndex)
+	params = append(params, fictionID)
 
 	result, err := db.DB.Exec(query, params...)
 	if err != nil {
@@ -283,8 +283,8 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	rows_affected, _ := result.RowsAffected()
-	if rows_affected == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 		return
 	}
@@ -293,24 +293,24 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 }
 
 func DeleteFiction(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to delete fiction."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
 	// Check if the fiction exists and if the contributor matches the logged-in user
-	var get_contributor_ID int
-	err_match := db.DB.QueryRow(
+	var getContributorID int
+	errMatch := db.DB.QueryRow(
 		`
 		SELECT
 			Contributor_ID
@@ -319,13 +319,13 @@ func DeleteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&get_contributor_ID,
+		&getContributorID,
 	)
 
-	if err_match != nil {
-		if err_match == sql.ErrNoRows {
+	if errMatch != nil {
+		if errMatch == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 			return
 		}
@@ -335,7 +335,7 @@ func DeleteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// Verify that the logged-in user is the contributor
-	if get_contributor_ID != ID_to_DB {
+	if getContributorID != IDToDB {
 		ctx.IndentedJSON(http.StatusForbidden, gin.H{"Error": "You do not have permission to delete this fiction"})
 		return
 	}
@@ -347,7 +347,7 @@ func DeleteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	)
 
 	if err != nil {
@@ -355,8 +355,8 @@ func DeleteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	rows_affected, _ := result.RowsAffected()
-	if rows_affected == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 		return
 	}
@@ -383,7 +383,7 @@ func GetContributedFictions(user_ID int) ([]models.FictionModel, error) {
 	}
 
 	defer rows.Close()
-	var contri_fictions []models.FictionModel
+	var contriFictions []models.FictionModel
 	for rows.Next() {
 		fiction := models.FictionModel{}
 		if err := rows.Scan(
@@ -402,17 +402,17 @@ func GetContributedFictions(user_ID int) ([]models.FictionModel, error) {
 			return nil, err
 		}
 
-		fiction_ID_str := strconv.Itoa(fiction.ID)
-		chapters, err := GetAllChapters(fiction_ID_str)
+		fictionIDStr := strconv.Itoa(fiction.ID)
+		chapters, err := GetAllChapters(fictionIDStr)
 		if err != nil {
 			return nil, err
 		}
 
 		fiction.Chapters = chapters
-		contri_fictions = append(contri_fictions, fiction)
+		contriFictions = append(contriFictions, fiction)
 	}
 
-	return contri_fictions, nil	
+	return contriFictions, nil	
 }
 
 func GetFavFictions(user_ID int) ([]models.FictionModel, error) {
@@ -436,7 +436,7 @@ func GetFavFictions(user_ID int) ([]models.FictionModel, error) {
 	}
 
 	defer rows.Close()
-	var fav_fictions []models.FictionModel
+	var favFictions []models.FictionModel
 	for rows.Next() {
 		fiction := models.FictionModel{}
 		if err := rows.Scan(
@@ -455,47 +455,47 @@ func GetFavFictions(user_ID int) ([]models.FictionModel, error) {
 			return nil, err
 		}
 
-		fiction_ID_str := strconv.Itoa(fiction.ID)
-		chapters, err := GetAllChapters(fiction_ID_str)
+		fictionIDStr := strconv.Itoa(fiction.ID)
+		chapters, err := GetAllChapters(fictionIDStr)
 		if err != nil {
 			return nil, err
 		}
 
 		fiction.Chapters = chapters
-		fav_fictions = append(fav_fictions, fiction)
+		favFictions = append(favFictions, fiction)
 	}
 
-	return fav_fictions, nil
+	return favFictions, nil
 }
 
 func AddFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to favorite a fiction."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
-	_, err_fav := db.DB.Exec(
+	_, errFav := db.DB.Exec(
 		`
 		INSERT INTO UserFavoriteFiction (User_ID, Fiction_ID) 
 		VALUES ($1, $2)
 		`,
-		ID_to_DB,
-		fiction_ID,
+		IDToDB,
+		fictionID,
 	)
 
-	if err_fav != nil {
+	if errFav != nil {
 		// Handle PostgreSQL-specific error for duplicate entry
-		if pqErr, ok := err_fav.(*pq.Error); ok {
+		if pqErr, ok := errFav.(*pq.Error); ok {
 			if pqErr.Code == "23505" { // 23505: Unique violation
 				ctx.IndentedJSON(http.StatusConflict, gin.H{"is_favorited": true, "Error": "Fiction is already in your favorites"})
 				return
@@ -511,23 +511,23 @@ func AddFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 }
 
 func CheckFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in first"})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
-	var is_Favorited bool
-	err_check := db.DB.QueryRow(
+	var isFavorited bool
+	errCheck := db.DB.QueryRow(
 		`
 		SELECT EXISTS (
 			SELECT 
@@ -538,18 +538,18 @@ func CheckFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 				User_ID = $1 AND Fiction_ID = $2
 		)
 		`,
-		ID_to_DB,
-		fiction_ID,
+		IDToDB,
+		fictionID,
 	).Scan(
-		&is_Favorited,
+		&isFavorited,
 	)
 
-	if err_check != nil {
+	if errCheck != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to check favorite status"})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"is_favorited": is_Favorited})
+	ctx.IndentedJSON(http.StatusOK, gin.H{"is_favorited": isFavorited})
 }
 
 func RemoveFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
@@ -559,14 +559,14 @@ func RemoveFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to remove a favorite."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
 	result, err := db.DB.Exec(
 		`
@@ -575,8 +575,8 @@ func RemoveFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			User_ID = $1 AND Fiction_ID = $2
 		`,
-		ID_to_DB,
-		fiction_ID,
+		IDToDB,
+		fictionID,
 	)
 
 	if err != nil {
@@ -584,8 +584,8 @@ func RemoveFavoriteFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	rows_affected, _ := result.RowsAffected()
-	if rows_affected == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"is_favorited": false, "Error": "Fiction not found in your favorites"})
 		return
 	}

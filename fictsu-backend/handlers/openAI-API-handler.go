@@ -29,35 +29,35 @@ func AddHeader(request *http.Request) {
 }
 
 func OpenAICreateStoryline(ctx *gin.Context) {
-	request_body := models.OpenAIRequestBodyText{}
-	if err := ctx.ShouldBindJSON(&request_body); err != nil {
+	requestBody := models.OpenAIRequestBodyText{}
+	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid request body"})
 		return
 	}
 
 	// Prepare OpenAI request payload
 	URL := "https://api.openai.com/v1/chat/completions"
-	prompt_message := fmt.Sprintf("%s '%s' %s", INTRO_TEXT, request_body.Message, OUTRO_TEXT)
+	promptMessage := fmt.Sprintf("%s '%s' %s", INTRO_TEXT, requestBody.Message, OUTRO_TEXT)
 
 	openAIRequest := map[string]interface{}{
 		"model": "gpt-4o",
 		"messages": []map[string]string{
 			{
 				"role": "user",
-				"content": prompt_message,
+				"content": promptMessage,
 			},
 		},
 	}
 
 	// Convert request body to JSON
-	JSON_body, err := json.Marshal(openAIRequest)
+	JSONBody, err := json.Marshal(openAIRequest)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to encode request"})
 		return
 	}
 
 	// Create new HTTP request
-	request, err := http.NewRequest("POST", URL, bytes.NewBuffer(JSON_body))
+	request, err := http.NewRequest("POST", URL, bytes.NewBuffer(JSONBody))
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create request"})
 		return
@@ -83,47 +83,47 @@ func OpenAICreateStoryline(ctx *gin.Context) {
 	}
 
 	// Unmarshal OpenAI response
-	response_body := models.OpenAIResponseBody{}
-	if err := json.Unmarshal(body, &response_body); err != nil {
+	responseBody := models.OpenAIResponseBody{}
+	if err := json.Unmarshal(body, &responseBody); err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to decode response"})
 		return
 	}
 
 	// Check if the response has choices
-	if len(response_body.Choices) == 0 {
+	if len(responseBody.Choices) == 0 {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "No choices returned from OpenAI"})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"Received_Message": response_body.Choices[0].Message.Content})
+	ctx.IndentedJSON(http.StatusOK, gin.H{"Received_Message": responseBody.Choices[0].Message.Content})
 }
 
 func OpenAICreateCharacter(ctx *gin.Context) {
-	request_body := models.OpenAIRequestBodyTextToImage{}
-	if err := ctx.ShouldBindJSON(&request_body); err != nil {
+	requestBody := models.OpenAIRequestBodyTextToImage{}
+	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid request body"})
 		return
 	}
 
 	URL := "https://api.openai.com/v1/images/generations"
-	prompt_message := INTRO_CHAR + "'" + request_body.Message + "'"
+	promptMessage := INTRO_CHAR + "'" + requestBody.Message + "'"
 
 	openAIRequest := map[string]interface{}{
 		"model":  "dall-e-3",
-		"prompt": prompt_message,
+		"prompt": promptMessage,
 		"n":      1,
-		"size":   request_body.Size,
+		"size":   requestBody.Size,
 	}
 
 	// Convert request body to JSON
-	JSON_body, err := json.Marshal(openAIRequest)
+	JSONBody, err := json.Marshal(openAIRequest)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to encode request"})
 		return
 	}
 
 	// Create new HTTP request
-	request, err := http.NewRequest("POST", URL, bytes.NewBuffer(JSON_body))
+	request, err := http.NewRequest("POST", URL, bytes.NewBuffer(JSONBody))
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create request"})
 		return
@@ -146,14 +146,14 @@ func OpenAICreateCharacter(ctx *gin.Context) {
 		return
 	}
 
-	response_body := models.DalleImageResponse{}
-	if err := json.Unmarshal(body, &response_body); err != nil {
+	responseBody := models.DalleImageResponse{}
+	if err := json.Unmarshal(body, &responseBody); err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to decode response"})
 		return
 	}
 
 	// Check if the response has Data
-	if len(response_body.Data) == 0 {
+	if len(responseBody.Data) == 0 {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "No choices returned from OpenAI"})
 		return
 	}
@@ -168,15 +168,15 @@ func OpenAICreateCharacter(ctx *gin.Context) {
 		`,
 	).Scan(&count)
 
-	image_URL := response_body.Data[0].URL
-	file_path := configs.CharImagePath + strconv.Itoa(count+1) + ".png"
-	err = DownloadImage(image_URL, file_path)
+	imageURL := responseBody.Data[0].URL
+	filePath := configs.CharImagePath + strconv.Itoa(count+1) + ".png"
+	err = DownloadImage(imageURL, filePath)
 	if err != nil {
 		fmt.Println("Error saving image:", err)
 		return
 	}
 
-	fmt.Println("Image saved successfully to", file_path)
+	fmt.Println("Image saved successfully to", filePath)
 }
 
 func DownloadImage(url, file_path string) error {

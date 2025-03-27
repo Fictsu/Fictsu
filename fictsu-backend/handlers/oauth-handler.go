@@ -24,54 +24,54 @@ func AuthorizedCallback(ctx *gin.Context, store *sessions.CookieStore) {
 	query.Add("provider", provider)
 	ctx.Request.URL.RawQuery = query.Encode()
 
-	user, err_complete := gothic.CompleteUserAuth(ctx.Writer, ctx.Request)
-	if err_complete != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err_complete.Error()})
+	user, err := gothic.CompleteUserAuth(ctx.Writer, ctx.Request)
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
 
 	// Check if the user exists in the database
-	user_in_db, err_get := GetUser(user.UserID)
-	if err_get != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err_get.Error()})
+	userInDB, err := GetUser(user.UserID)
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
 
 	// Create a new user if not found
-	if user_in_db == nil {
-		new_user := &models.UserModel{
+	if userInDB == nil {
+		newUser := &models.UserModel{
 			User_ID: 	user.UserID,
 			Name: 		user.Name,
 			Email: 		user.Email,
 			Avatar_URL: user.AvatarURL,
 		}
 
-		created_user, err_create_user := CreateUser(new_user)
-		if err_create_user != nil {
-			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err_create_user.Error()})
+		createdUser, err := CreateUser(newUser)
+		if err != nil {
+			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 
-		user_in_db = created_user
+		userInDB = createdUser
 	}
 
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, err := store.Get(ctx.Request, "fictsu-session")
+	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create session"})
 		return
 	}
 
-	session.Values["ID"] = user_in_db.ID
-	session.Values["name"] = user_in_db.Name
-	session.Values["email"] = user_in_db.Email
-	session.Values["avatar_URL"] = user_in_db.Avatar_URL
-	err_sess = session.Save(ctx.Request, ctx.Writer)
-	if err_sess != nil {
+	session.Values["ID"] = userInDB.ID
+	session.Values["name"] = userInDB.Name
+	session.Values["email"] = userInDB.Email
+	session.Values["avatar_URL"] = userInDB.Avatar_URL
+	err = session.Save(ctx.Request, ctx.Writer)
+	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to save session"})
 		return
 	}
 
-	HTML_response := `
+	HTMLResponse := `
 		<!DOCTYPE html>
 		<html lang="en">
 		<head>
@@ -88,7 +88,7 @@ func AuthorizedCallback(ctx *gin.Context, store *sessions.CookieStore) {
 		</body>
 		</html>
 	`
-	ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(HTML_response))
+	ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(HTMLResponse))
 }
 
 func Logout(ctx *gin.Context, store *sessions.CookieStore) {
@@ -99,7 +99,7 @@ func Logout(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// This removes the session immediately
-	session.Options.MaxAge = -1 
+	session.Options.MaxAge = -1
 	err = session.Save(ctx.Request, ctx.Writer)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to clear session"})

@@ -14,7 +14,7 @@ import (
 	models "github.com/Fictsu/Fictsu/models"
 )
 
-func GetAllChapters(fiction_id string) ([]models.ChapterModel, error) {
+func GetAllChapters(fictionID string) ([]models.ChapterModel, error) {
 	rows, err := db.DB.Query(
 		`
 		SELECT
@@ -25,7 +25,7 @@ func GetAllChapters(fiction_id string) ([]models.ChapterModel, error) {
 			Fiction_ID = $1
 		ORDER BY ID
 		`,
-		fiction_id,
+		fictionID,
 	)
 
 	if err != nil {
@@ -53,10 +53,10 @@ func GetAllChapters(fiction_id string) ([]models.ChapterModel, error) {
 }
 
 func GetChapter(ctx *gin.Context) {
-	fiction_ID := ctx.Param("fiction_id")
-	chapter_ID := ctx.Param("chapter_id")
+	fictionID := ctx.Param("fictionID")
+	chapterID := ctx.Param("chapterID")
 	chapter := models.ChapterModel{}
-	err_select := db.DB.QueryRow(
+	err := db.DB.QueryRow(
 		`
 		SELECT
 			Fiction_ID, ID, Title, Content, Created
@@ -65,8 +65,8 @@ func GetChapter(ctx *gin.Context) {
 		WHERE
 			Fiction_ID = $1 AND ID = $2
 		`,
-		fiction_ID,
-		chapter_ID,
+		fictionID,
+		chapterID,
 	).Scan(
 		&chapter.Fiction_ID,
 		&chapter.ID,
@@ -75,8 +75,8 @@ func GetChapter(ctx *gin.Context) {
 		&chapter.Created,
 	)
 
-	if err_select != nil {
-		if err_select == sql.ErrNoRows {
+	if err != nil {
+		if err == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Chapter not found"})
 		} else {
 			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to retrieve chapter"})
@@ -89,24 +89,24 @@ func GetChapter(ctx *gin.Context) {
 }
 
 func CreateChapter(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to create a chapter."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
 
 	// Check if the fiction exists and if the contributor matches the logged-in user
-	var get_contributor_ID int
-	err_match := db.DB.QueryRow(
+	var getContributorID int
+	errMatch := db.DB.QueryRow(
 		`
 		SELECT
 			Contributor_ID
@@ -115,13 +115,13 @@ func CreateChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&get_contributor_ID,
+		&getContributorID,
 	)
 
-	if err_match != nil {
-		if err_match == sql.ErrNoRows {
+	if errMatch != nil {
+		if errMatch == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 			return
 		}
@@ -131,19 +131,19 @@ func CreateChapter(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// Verify that the logged-in user is the contributor
-	if get_contributor_ID != ID_to_DB {
+	if getContributorID != IDToDB {
 		ctx.IndentedJSON(http.StatusForbidden, gin.H{"Error": "You do not have permission to create chapters for this fiction"})
 		return
 	}
 
-	chapter_create_request := models.ChapterModel{}
-	if err := ctx.ShouldBindJSON(&chapter_create_request); err != nil {
+	chapterCreateRequest := models.ChapterModel{}
+	if err := ctx.ShouldBindJSON(&chapterCreateRequest); err != nil {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid data provided for chapter creation"})
 		return
 	}
 
-	var next_chapter_ID int
-	err_next_chapter_ID := db.DB.QueryRow(
+	var nextChapterID int
+	errNextChapterID := db.DB.QueryRow(
 		`
 		SELECT
 			COALESCE(MAX(ID), 0) + 1
@@ -152,68 +152,68 @@ func CreateChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			Fiction_ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&next_chapter_ID,
+		&nextChapterID,
 	)
 
-	if err_next_chapter_ID != nil {
+	if errNextChapterID != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to calculate next chapter ID"})
         return
 	}
 
-	var new_created_TS time.Time
-	err_insert := db.DB.QueryRow(
+	var newCreatedTS time.Time
+	errInsert := db.DB.QueryRow(
 		`
 		INSERT INTO Chapters (Fiction_ID, ID, Title, Content)
 		VALUES ($1, $2, $3, $4)
 		RETURNING Created
 		`,
-		fiction_ID,
-		next_chapter_ID,
-		chapter_create_request.Title,
-		chapter_create_request.Content,
+		fictionID,
+		nextChapterID,
+		chapterCreateRequest.Title,
+		chapterCreateRequest.Content,
 	).Scan(
-		&new_created_TS,
+		&newCreatedTS,
 	)
 
-	if err_insert != nil {
+	if errInsert != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create chapter"})
 		return
 	}
 
-	fiction_ID_int, err_str := strconv.Atoi(fiction_ID)
-	if err_str != nil {
+	fictionIDInt, errStr := strconv.Atoi(fictionID)
+	if errStr != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to convert fiction ID to int"})
         return
 	}
 
-	chapter_create_request.Fiction_ID = fiction_ID_int
-	chapter_create_request.ID = next_chapter_ID
-	chapter_create_request.Created = new_created_TS
-	ctx.IndentedJSON(http.StatusCreated, chapter_create_request)
+	chapterCreateRequest.Fiction_ID = fictionIDInt
+	chapterCreateRequest.ID = nextChapterID
+	chapterCreateRequest.Created = newCreatedTS
+	ctx.IndentedJSON(http.StatusCreated, chapterCreateRequest)
 }
 
 func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to edit a chapter."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
-	chapter_ID := ctx.Param("chapter_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
+	chapterID := ctx.Param("chapterID")
 
 	// Check if the fiction exists and if the contributor matches the logged-in user
-	var get_contributor_ID int
-	err_match := db.DB.QueryRow(
+	var getContributorID int
+	errMatch := db.DB.QueryRow(
 		`
 		SELECT
 			Contributor_ID
@@ -222,13 +222,13 @@ func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&get_contributor_ID,
+		&getContributorID,
 	)
 
-	if err_match != nil {
-		if err_match == sql.ErrNoRows {
+	if errMatch != nil {
+		if errMatch == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 			return
 		}
@@ -238,30 +238,30 @@ func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// Verify that the logged-in user is the contributor
-	if get_contributor_ID != ID_to_DB {
+	if getContributorID != IDToDB {
 		ctx.IndentedJSON(http.StatusForbidden, gin.H{"Error": "You do not have permission to edit chapters of this fiction"})
 		return
 	}
 
-	chapter_update_request := models.ChapterModel{}
-	if err := ctx.ShouldBindJSON(&chapter_update_request); err != nil {
+	chapterUpdateRequest := models.ChapterModel{}
+	if err := ctx.ShouldBindJSON(&chapterUpdateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid input data"})
 		return
 	}
 
 	query := "UPDATE Chapters SET "
 	params := []interface{}{}
-	param_index := 1
-	if chapter_update_request.Title != "" {
-		query += "Title = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, chapter_update_request.Title)
-		param_index++
+	paramIndex := 1
+	if chapterUpdateRequest.Title != "" {
+		query += "Title = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, chapterUpdateRequest.Title)
+		paramIndex++
 	}
 
-	if chapter_update_request.Content != "" {
-		query += "Content = $" + strconv.Itoa(param_index) + ", "
-		params = append(params, chapter_update_request.Content)
-		param_index++
+	if chapterUpdateRequest.Content != "" {
+		query += "Content = $" + strconv.Itoa(paramIndex) + ", "
+		params = append(params, chapterUpdateRequest.Content)
+		paramIndex++
 	}
 
 	if len(params) == 0 {
@@ -269,8 +269,8 @@ func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	query = strings.TrimSuffix(query, ", ") + " WHERE ID = $" + strconv.Itoa(param_index) + " AND Fiction_ID = $" + strconv.Itoa(param_index + 1)
-	params = append(params, chapter_ID, fiction_ID)
+	query = strings.TrimSuffix(query, ", ") + " WHERE ID = $" + strconv.Itoa(paramIndex) + " AND Fiction_ID = $" + strconv.Itoa(paramIndex + 1)
+	params = append(params, chapterID, fictionID)
 
 	result, err := db.DB.Exec(query, params...)
 	if err != nil {
@@ -278,8 +278,8 @@ func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	rows_affected, _ := result.RowsAffected()
-	if rows_affected == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Chapter not found"})
 		return
 	}
@@ -288,25 +288,25 @@ func EditChapter(ctx *gin.Context, store *sessions.CookieStore) {
 }
 
 func DeleteChapter(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized. Please log in to delete chapter."})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
-	fiction_ID := ctx.Param("fiction_id")
-	chapter_ID := ctx.Param("chapter_id")
+	IDToDB := IDFromSession.(int)
+	fictionID := ctx.Param("fictionID")
+	chapterID := ctx.Param("chapterID")
 
 	// Check if the fiction exists and if the contributor matches the logged-in user
-	var get_contributor_ID int
-	err_match := db.DB.QueryRow(
+	var getContributorID int
+	errMatch := db.DB.QueryRow(
 		`
 		SELECT
 			Contributor_ID
@@ -315,13 +315,13 @@ func DeleteChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		fiction_ID,
+		fictionID,
 	).Scan(
-		&get_contributor_ID,
+		&getContributorID,
 	)
 
-	if err_match != nil {
-		if err_match == sql.ErrNoRows {
+	if errMatch != nil {
+		if errMatch == sql.ErrNoRows {
 			ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 			return
 		}
@@ -331,7 +331,7 @@ func DeleteChapter(ctx *gin.Context, store *sessions.CookieStore) {
 	}
 
 	// Verify that the logged-in user is the contributor
-	if get_contributor_ID != ID_to_DB {
+	if getContributorID != IDToDB {
 		ctx.IndentedJSON(http.StatusForbidden, gin.H{"Error": "You do not have permission to delete chapters of this fiction"})
 		return
 	}
@@ -343,8 +343,8 @@ func DeleteChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			Fiction_ID = $1 AND ID = $2
 		`,
-		fiction_ID,
-		chapter_ID,
+		fictionID,
+		chapterID,
 	)
 
 	if err != nil {
@@ -352,8 +352,8 @@ func DeleteChapter(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	rows_affected, _ := result.RowsAffected()
-	if rows_affected == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Chapter not found"})
 		return
 	}

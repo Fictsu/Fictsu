@@ -13,19 +13,19 @@ import (
 )
 
 func GetUserProfile(ctx *gin.Context, store *sessions.CookieStore) {
-	session, err_sess := store.Get(ctx.Request, "fictsu-session")
-	if err_sess != nil {
+	session, errSess := store.Get(ctx.Request, "fictsu-session")
+	if errSess != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to get session"})
 		return
 	}
 
-	ID_from_session := session.Values["ID"]
-	if ID_from_session == nil {
+	IDFromSession := session.Values["ID"]
+	if IDFromSession == nil {
 		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"Error": "Unauthorized"})
 		return
 	}
 
-	ID_to_DB := ID_from_session.(int)
+	IDToDB := IDFromSession.(int)
 	user := models.UserModel{}
 	err := db.DB.QueryRow(
 		`
@@ -36,7 +36,7 @@ func GetUserProfile(ctx *gin.Context, store *sessions.CookieStore) {
 		WHERE
 			ID = $1
 		`,
-		ID_to_DB,
+		IDToDB,
 	).Scan(
 		&user.ID,
 		&user.User_ID,
@@ -57,25 +57,25 @@ func GetUserProfile(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	fav_fictions, err := GetFavFictions(ID_to_DB)
+	favFictions, err := GetFavFictions(IDToDB)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to retrieve favorite fictions"})
 		return
 	}
 
-	contri_fictions, err := GetContributedFictions(ID_to_DB)
+	contriFictions, err := GetContributedFictions(IDToDB)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to retrieve contributed fictions"})
 		return
 	}
 
-	user.ID = ID_to_DB
-	user.Fav_Fictions = fav_fictions
-	user.Contributed_Fic = contri_fictions
+	user.ID = IDToDB
+	user.Fav_Fictions = favFictions
+	user.Contributed_Fic = contriFictions
 	ctx.IndentedJSON(http.StatusOK, gin.H{"User_Profile": user})
 }
 
-func GetUser(user_id string) (*models.UserModel, error) {
+func GetUser(userID string) (*models.UserModel, error) {
 	user := models.UserModel{}
 	err := db.DB.QueryRow(
 		`
@@ -86,7 +86,7 @@ func GetUser(user_id string) (*models.UserModel, error) {
 		WHERE
 			User_ID = $1
 		`,
-		user_id,
+		userID,
 	).Scan(
 		&user.ID,
 		&user.User_ID,
@@ -108,9 +108,9 @@ func GetUser(user_id string) (*models.UserModel, error) {
 }
 
 func CreateUser(user *models.UserModel) (*models.UserModel, error) {
-	var new_user_ID int
-	var new_user_Google_ID string
-	var new_user_joined time.Time
+	var newUserID int
+	var newUserGoogleID string
+	var newUserJoined time.Time
 	err := db.DB.QueryRow(
 		`
 		INSERT INTO Users (User_ID, Name, Email, Avatar_URL)
@@ -122,16 +122,16 @@ func CreateUser(user *models.UserModel) (*models.UserModel, error) {
 		user.Email,
 		user.Avatar_URL,
 	).Scan(
-		&new_user_ID,
-		&new_user_Google_ID,
-		&new_user_joined,
+		&newUserID,
+		&newUserGoogleID,
+		&newUserJoined,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user account: %v", err)
 	}
 
-	user.ID = new_user_ID
-	user.User_ID = new_user_Google_ID
-	user.Joined = new_user_joined
+	user.ID = newUserID
+	user.User_ID = newUserGoogleID
+	user.Joined = newUserJoined
 	return user, nil
 }
