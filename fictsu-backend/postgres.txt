@@ -21,7 +21,7 @@ CREATE TABLE Fictions (
     Subtitle            VARCHAR(255),
     Author              VARCHAR(255),
     Artist              VARCHAR(255),
-    Status              VARCHAR(50) CHECK (Status IN ('Ongoing', 'Completed', 'Hiatus')),
+    Status              VARCHAR(50) CHECK (Status IN ('Ongoing', 'Completed', 'Hiatus', 'Dropped')),
     Synopsis            TEXT,
     Created             DATE DEFAULT CURRENT_DATE
 );
