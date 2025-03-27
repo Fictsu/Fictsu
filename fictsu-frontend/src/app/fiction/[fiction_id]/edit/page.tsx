@@ -3,25 +3,29 @@
 import useSWR from "swr"
 import Link from "next/link"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { useForm } from "react-hook-form"
 import { useRouter } from "next/navigation"
+import "react-quill-new/dist/quill.snow.css"
 import { use, useState, useEffect } from "react"
 import ChapterActions from "@/components/ChapterActions"
+import { Fiction, FictionForm, Chapter } from "@/types/types"
 import FloatingToolsMenu from "@/components/FloatingToolsMenu"
-import { Fiction, FictionForm, Chapter, ChapterForm } from "@/types/types"
 
-const fetcher = (url: string) => fetch(url, { credentials: "include" }).then((res) => res.json())
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
+const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((res) => res.json())
 
 export default function FictionEditPage({ params }: { params: Promise<{ fiction_id: string }> }) {
     const router = useRouter()
-
     const { fiction_id } = use(params)
-    const chapterForm = useForm<ChapterForm>()
-    const fictionIdNumber = Number(fiction_id)
+    const fictionIDNumber = Number(fiction_id)
+
     const [loading, setLoading] = useState(false)
+    const [editorContent, setEditorContent] = useState("")
     const [cover, setCover] = useState("/default-cover.png")
-    const [showChapterForm, setShowChapterForm] = useState(false)
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<FictionForm>()
+
+    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<FictionForm>()
     const { data: userData, error: userError } = useSWR(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, fetcher)
     const { data: fictionData, error: fictionError, mutate } = useSWR<{ Fiction: Fiction }>(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}`, fetcher)
 
@@ -49,9 +53,8 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
         }
 
         reset(fictionData.Fiction)
-        if (fictionData.Fiction.cover) {
-            setCover(fictionData.Fiction.cover)
-        }
+        setCover(fictionData.Fiction.cover || "/default-cover.png")
+        setEditorContent(fictionData.Fiction.synopsis || "") // Set current synopsis content
     }, [userData, fictionData, fictionError, userError, reset, router])
 
     const onSubmit = async (formData: FictionForm) => {
@@ -74,55 +77,55 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
         router.push(`/f/${fiction_id}`)
     }
 
-    const onSubmitChapter = async (data: ChapterForm) => {
-        setLoading(true)
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/c`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(data),
-            })
-
-            if (!response.ok) {
-                alert("Failed to create chapter.")
-                return
-            }
-
-            alert("Chapter created successfully!")
-            setShowChapterForm(false)
-            mutate()
-        } catch (error) {
-            console.error("Error submitting chapter form", error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
     if (!fictionData || !userData) {
         return <p className="text-center mt-10">Loading...</p>
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-4">Edit Fiction</h1>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="flex gap-6">
+        <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Edit Fiction</h1>
+            
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <div className="flex gap-7">
                     <Image
                         src={cover}
                         alt="Fiction Cover"
-                        width={200}
+                        width={230}
                         height={300}
-                        className="rounded-lg"
+                        className="rounded-lg shadow-md"
                     />
-                    <div className="flex-1 space-y-2">
-                        <input {...register("title", { required: true })} placeholder="Title *Required" className="w-full p-2 border rounded" />
-                        {errors.title && <span className="text-red-500">Title is required</span>}
+                    <div className="flex-1 space-y-4">
+                        <div className="space-y-1">
+                            <input
+                                {...register("title", { required: "Title is required" })}
+                                placeholder="Title *Required"
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                            />
+                            {errors.title && <span className="text-red-500 text-sm">{errors.title.message}</span>}
+                        </div>
 
-                        <input {...register("subtitle")} placeholder="Subtitle" className="w-full p-2 border rounded" />
-                        <input {...register("author")} placeholder="Author" className="w-full p-2 border rounded" />
-                        <input {...register("artist")} placeholder="Artist" className="w-full p-2 border rounded" />
-                        <select {...register("status")} className="w-full p-2 border rounded">
+                        <input
+                            {...register("subtitle")}
+                            placeholder="Subtitle"
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                        />
+
+                        <input
+                            {...register("author")}
+                            placeholder="Author"
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                        />
+
+                        <input
+                            {...register("artist")}
+                            placeholder="Artist"
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                        />
+
+                        <select
+                            {...register("status")}
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900 pl-3"
+                        >
                             <option value="Ongoing">Ongoing</option>
                             <option value="Completed">Completed</option>
                             <option value="Hiatus">Hiatus</option>
@@ -130,41 +133,63 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
                         </select>
                     </div>
                 </div>
-                <textarea {...register("synopsis", { required: true })} placeholder="Synopsis *Required" className="w-full p-2 border rounded" />
-                {errors.synopsis && <span className="text-red-500">Synopsis is required</span>}
 
-                <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded" disabled={loading}>
-                    {loading ? "Updating..." : "Save Changes"}
-                </button>
+                <div>
+                    <ReactQuill
+                        value={editorContent}
+                        onChange={(content) => {
+                            setEditorContent(content)
+                            setValue("synopsis", content)
+                        }}
+                        className="w-full p-0 bg-white border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                        placeholder="Write your synopsis here..."
+                    />
+                    {errors.synopsis && <span className="text-red-500">{errors.synopsis.message}</span>}
+                </div>
+
+                <div className="flex justify-center mt-6">
+                    <button
+                        type="submit"
+                        className={`w-full max-w-xs py-3 text-white font-semibold rounded-lg transition-all duration-300 ${
+                            loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-lg"
+                        }`}
+                        disabled={loading}
+                    >
+                        {loading ? "Updating..." : "Save Changes"}
+                    </button>
+                </div>
             </form>
 
-            {fictionData.Fiction.chapters?.length > 0 && (
-                <div className="mt-6">
-                    <h2 className="text-xl font-semibold">Chapters</h2>
-                    <ul className="mt-2 list-disc list-inside">
+            <div className="mt-6">
+                <h2 className="text-xl font-semibold text-gray-800">Chapters</h2>
+                {fictionData.Fiction.chapters && fictionData.Fiction.chapters.length > 0 ? (
+                    <ul className="mt-4 space-y-3">
                         {fictionData.Fiction.chapters.map((chapter: Chapter) => (
-                            <li key={chapter.id} className="flex items-center justify-between">
-                                <Link href={`/f/${fiction_id}/${chapter.id}`} className="text-blue-500 hover:underline">
-                                    {chapter.title}
-                                </Link>
-                                <ChapterActions fiction_id={fictionIdNumber} chapter_id={chapter.id} contributor_id={fictionData.Fiction.contributor_id} />
+                            <li key={chapter.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-md">
+                                <div className="flex-1">
+                                    <Link href={`/f/${fiction_id}/${chapter.id}`} className="text-blue-600 hover:underline">
+                                        {chapter.title}
+                                    </Link>
+                                    <p className="text-sm text-gray-600">Created on {new Date(chapter.created).toLocaleDateString()}</p>
+                                </div>
+                                <ChapterActions fictionID={fictionIDNumber} chapterID={chapter.id} contributorID={fictionData.Fiction.contributor_id} />
                             </li>
                         ))}
                     </ul>
-                </div>
-            )}
-            <button onClick={() => setShowChapterForm(!showChapterForm)} className="mt-4 w-full bg-green-500 text-white py-2 rounded">
-                {showChapterForm ? "Cancel" : "Add Chapter"}
-            </button>
-            {showChapterForm && (
-                <form onSubmit={chapterForm.handleSubmit(onSubmitChapter)} className="space-y-4 mt-4 border p-4 rounded">
-                    <input {...chapterForm.register("title", { required: true })} placeholder="Chapter Title *Required" className="w-full p-2 border rounded" />
-                    {chapterForm.formState.errors.title && <span className="text-red-500">Title is required</span>}
-                    <textarea {...chapterForm.register("content", { required: true })} placeholder="Chapter Content *Required" className="w-full p-2 border rounded" />
-                    {chapterForm.formState.errors.content && <span className="text-red-500">Content is required</span>}
-                    <button type="submit" className="w-full bg-green-500 text-white py-2 rounded" disabled={loading}>{loading ? "Creating Chapter..." : "Create Chapter"}</button>
-                </form>
-            )}
+                ) : (
+                    <p className="text-center text-gray-600 mt-4">No chapter</p>
+                )}
+            </div>
+
+            <div className="flex justify-center mt-8 mb-0">
+                <button
+                    onClick={() => window.open(`/f/${fiction_id}/ch/create`, "_blank")}
+                    className="w-full max-w-xs py-3 text-white font-semibold rounded-lg bg-green-600 hover:bg-green-700 shadow-lg transition-all duration-300"
+                >
+                    Add Chapter
+                </button>
+            </div>
+
             <FloatingToolsMenu />
         </div>
     )

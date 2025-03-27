@@ -1,74 +1,135 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
 import { Fiction } from "@/types/types"
-import { notFound } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useParams, notFound } from "next/navigation"
 import FavoriteButton from "@/components/FavoriteButton"
 
-async function getFiction(fiction_id: string): Promise<Fiction | null> {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}`, {
-        cache: "no-store",
-        credentials: "include",
-    })
+export default function FictionPage() {
+    const { fiction_id } = useParams()
+    const [loading, setLoading] = useState(true)
+    const [fiction, setFiction] = useState<Fiction | null>(null)
+    const [showFullSynopsis, setShowFullSynopsis] = useState(false)
 
-    if (!res.ok) {
-        return null
+    useEffect(() => {
+        async function fetchFiction() {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}`, {
+                    cache: "no-store",
+                    credentials: "include",
+                })
+
+                if (!res.ok) {
+                    throw new Error("Failed to fetch fiction data")
+                }
+
+                const data = await res.json()
+                setFiction(data.Fiction)
+            } catch (error) {
+                console.error(error)
+                setFiction(null)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchFiction()
+    }, [fiction_id])
+
+    if (loading) {
+        return <p className="text-center py-10 text-gray-400">Loading...</p>
     }
 
-    const data = await res.json()
-    return data.Fiction
-}
-
-export default async function FictionPage({ params }: { params: { fiction_id: string } }) {
-    const { fiction_id } = await Promise.resolve(params)
-    const fiction = await getFiction(fiction_id)
     if (!fiction) {
-        notFound()
+        return notFound()
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
-            <div className="flex gap-6">
-                <Image
-                    src={fiction.cover || "/default-cover.png"}
-                    alt={fiction.title}
-                    width={200}
-                    height={300}
-                    className="rounded-lg"
-                />
-                <div>
-                    <h1 className="text-3xl font-bold">{fiction.title}</h1>
-                    <p className="text-gray-500">By {fiction.author}</p>
-                    <FavoriteButton fiction_id={fiction.id} />
+        <div className="max-w-screen-xl mx-auto px-24 mt-6 mb-6">
+            <div className="flex flex-col md:flex-row gap-6 border border-gray-600 p-6 rounded-lg bg-gray-900">
+                {/* Cover Image Container */}
+                <div className="relative w-[250px] h-[375px] flex-shrink-0">
+                    <Image
+                        src={fiction.cover || "/default-cover.png"}
+                        alt={fiction.title}
+                        width={250}
+                        height={375}
+                        className="rounded-lg object-cover w-full h-full"
+                    />
+                    {/* Favorite Button Positioned at Bottom-Right */}
+                    <div className="absolute bottom-2 right-2">
+                        <FavoriteButton fictionID={fiction.id} />
+                    </div>
+                </div>
+
+                {/* Fiction Details */}
+                <div className="flex-grow space-y-4">
+                    <h1 className="text-3xl font-bold text-gray-200">{fiction.title}</h1>
+                    
+                    {/* Subtitle */}
+                    {fiction.subtitle && (
+                        <p className="text-lg text-gray-400 italic">{fiction.subtitle}</p>
+                    )}
+
+                    <p className="text-gray-400">
+                        Story: {fiction.author} 
+                        {fiction.artist && <span> | Art: {fiction.artist}</span>}
+                    </p>
                     <p className="text-sm text-gray-400">Contributor: {fiction.contributor_name}</p>
-                    <p className="mt-2 text-sm bg-gray-200 px-2 py-1 inline-block rounded-md">{fiction.status}</p>
-                    <p className="mt-4">{fiction.synopsis}</p>
+
+                    {/* Created Date */}
+                    <p className="text-sm text-gray-400">Created: {new Date(fiction.created).toLocaleDateString()}</p>
+
+                    <span className="mt-2 text-sm bg-gray-700 px-2 py-1 rounded-md text-gray-400">{fiction.status}</span>
+
+                    {/* Synopsis with "See More" Toggle */}
+                    <div className="mt-4 break-words">
+                        <div
+                            className={`formatted-content overflow-hidden transition-all text-gray-350 ${showFullSynopsis ? "max-h-full" : "max-h-[100px]"}`}
+                            dangerouslySetInnerHTML={{ __html: fiction.synopsis }} // Renders the synopsis with HTML tags
+                        />
+                        {fiction.synopsis.length > 200 && (
+                            <button
+                                className="text-blue-400 hover:underline mt-2"
+                                onClick={() => setShowFullSynopsis(!showFullSynopsis)}
+                            >
+                                {showFullSynopsis ? "See Less" : "See More"}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Genres */}
             {fiction.genres?.length > 0 && (
-                <div className="mt-6">
-                    <h2 className="text-xl font-semibold">Genres</h2>
+                <section className="mt-6 border border-gray-600 p-4 rounded-lg bg-gray-900">
+                    <h2 className="text-xl font-semibold text-gray-400">Genres</h2>
                     <div className="flex flex-wrap gap-2 mt-2">
                         {fiction.genres.map((genre) => (
-                            <span key={genre.id} className="bg-blue-200 px-3 py-1 rounded-lg text-sm">
+                            <span key={genre.id} className="bg-gray-700 px-3 py-1 rounded-lg text-sm text-gray-400">
                                 {genre.genre_name}
                             </span>
                         ))}
                     </div>
-                </div>
+                </section>
             )}
+
+            {/* Chapters */}
             {fiction.chapters?.length > 0 && (
-                <div className="mt-6">
-                    <h2 className="text-xl font-semibold">Chapters</h2>
-                    <ul className="mt-2 list-disc list-inside">
+                <section className="mt-6 border border-gray-600 p-4 rounded-lg bg-gray-900">
+                    <h2 className="text-xl font-semibold text-gray-400">Chapters</h2>
+                    <ul className="mt-2 space-y-2">
                         {fiction.chapters.map((chapter) => (
-                            <li key={chapter.id} className="flex items-center justify-between">
-                                <Link href={`/f/${fiction.id}/${chapter.id}`} className="text-blue-500 hover:underline">
-                                    {chapter.title}
-                                </Link>
-                            </li>
+                            <Link key={chapter.id} href={`/f/${fiction.id}/${chapter.id}`} className="block">
+                                <li className="border border-gray-600 p-2 rounded-lg bg-gray-800 flex justify-between items-center hover:bg-gray-700 transition">
+                                    <span className="text-blue-400">{chapter.title}</span>
+                                    <p className="text-sm text-gray-400">{new Date(chapter.created).toLocaleDateString()}</p>
+                                </li>
+                            </Link>
                         ))}
                     </ul>
-                </div>
+                </section>
             )}
         </div>
     )
