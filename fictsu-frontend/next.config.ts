@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
         source: "/f/:fiction_id/:chapter_id/edit",
         destination: "/fiction/:fiction_id/:chapter_id/edit",
       },
+      {
+        source: "/f/:fiction_id/ch/create",
+        destination: "/fiction/:fiction_id/create",
+      },
     ];
   },
 
@@ -32,6 +36,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "firebasestorage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
     ],
   },
