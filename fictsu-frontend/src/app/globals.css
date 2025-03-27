@@ -24,3 +24,37 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.formatted-content h1 {
+  font-size: 2rem; /* Equivalent to text-4xl */
+}
+
+.formatted-content h2 {
+  font-size: 1.75rem; /* Equivalent to text-3xl */
+}
+
+.formatted-content h3 {
+  font-size: 1.5rem; /* Equivalent to text-2xl */
+}
+
+/* Ensure ordered lists display numbers properly */
+.formatted-content ol {
+  list-style-type: decimal;  /* This ensures numbers are displayed */
+  padding-left: 1.5rem;      /* Adds space to the left */
+  margin-bottom: 1rem;       /* Adds space after the list */
+}
+
+.formatted-content ol li {
+  margin-bottom: 0.5rem;     /* Adds space between list items */
+}
+
+/* Ensure unordered lists display bullets properly */
+.formatted-content ul {
+  list-style-type: disc;  /* This ensures bullets are displayed */
+  padding-left: 1.5rem;   /* Adds space to the left for bullets */
+  margin-bottom: 1rem;    /* Adds space after the list */
+}
+
+.formatted-content ul li {
+  margin-bottom: 0.5rem;  /* Adds space between list items */
+}
