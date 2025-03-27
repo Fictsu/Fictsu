@@ -1,44 +1,44 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import useSWR from "swr"
+import { useState } from "react"
+import { Heart, HeartOff } from "lucide-react"
 
-export default function FavoriteButton({ fiction_id }: { fiction_id: number }) {
-    const [loading, setLoading] = useState(false)
-    const [isFavorited, setIsFavorited] = useState(false)
-
-    useEffect(() => {
-        async function checkFavoriteStatus() {
-            try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/fav/status`, {
-                    credentials: "include",
-                })
-
-                if (res.status === 401) {
-                    console.warn("User not logged in, skipping favorite status check.")
-                    return
-                }
-
-                if (!res.ok) {
-                    throw new Error("Failed to check favorite status")
-                }
-
-                const data = await res.json()
-                setIsFavorited(data.is_favorited)
-            } catch (error) {
-                console.error("Error checking favorite status:", error)
+const fetcher = (url: string) =>
+    fetch(url, { credentials: "include" })
+        .then((res) => {
+            if (res.status === 401) {
+                return { is_favorited: false, is_logged_in: false } // Handle not logged in
             }
-        }
 
-        checkFavoriteStatus()
-    }, [fiction_id])
+            if (!res.ok) {
+                throw new Error("Failed to fetch data")
+            }
+            return res.json()
+        })
+
+export default function FavoriteButton({ fictionID }: { fictionID: number }) {
+    const { data, error, mutate } = useSWR(
+        `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/fav/status`,
+        fetcher
+    )
+
+    const [loading, setLoading] = useState(false)
 
     async function toggleFavorite() {
+        if (!data) {
+            return
+        }
+
+        if (data.is_logged_in === false) {
+            alert("You need to log in to favorite a fiction.")
+            return
+        }
+
         setLoading(true)
         try {
-            const method = isFavorited ? "DELETE" : "POST"
-            const endpoint = isFavorited
-            ? `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/fav/rmv`
-            : `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/fav`
+            const method = data.is_favorited ? "DELETE" : "POST"
+            const endpoint = `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/fav${data.is_favorited ? "/rmv" : ""}`
 
             const res = await fetch(endpoint, {
                 method,
@@ -47,31 +47,35 @@ export default function FavoriteButton({ fiction_id }: { fiction_id: number }) {
 
             if (res.status === 401) {
                 alert("You need to log in to favorite a fiction.")
-                setLoading(false)
                 return
             }
-    
+
             if (!res.ok) {
-                throw new Error(`Failed to ${isFavorited ? "remove" : "add"} favorite`)
+                throw new Error(`Failed to ${data.is_favorited ? "remove" : "add"} favorite`)
             }
 
-            const data = await res.json()
-            setIsFavorited(data.is_favorited)
+            await mutate({ ...data, is_favorited: !data.is_favorited }, false)
         } catch (error) {
-            console.error("Error toggling favorite: ", error)
+            console.error("Error toggling favorite:", error)
         } finally {
             setLoading(false)
         }
+    }
+
+    if (error) {
+        return null
     }
 
     return (
         <button
             disabled={loading}
             onClick={toggleFavorite}
-            className="p-2 text-red-500 hover:text-red-700"
-            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            className={`p-2 rounded-lg transition ${
+                data?.is_favorited ? "text-red-500 hover:text-red-700" : "text-gray-500 hover:text-gray-700"
+            } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            aria-label={data?.is_favorited ? "Remove from favorites" : "Add to favorites"}
         >
-            {isFavorited ? "❤️" : "🤍"}
+            {data?.is_favorited ? <Heart className="w-10 h-10 fill-current" /> : <HeartOff className="w-10 h-10" />}
         </button>
     )
 }

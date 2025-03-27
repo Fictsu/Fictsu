@@ -1,26 +1,35 @@
 import useSWR from "swr"
 import { useState } from "react"
 import { User } from "@/types/types"
+import { motion } from "framer-motion"
 
-const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then(res => res.json())
+const fetcher = async (URL: string) => {
+    const res = await fetch(URL, { credentials: "include" })
+    if (!res.ok) {
+        throw new Error("Failed to fetch user data")
+    }
 
-export default function ChapterActions({ fiction_id, chapter_id, contributor_id }: {
-    fiction_id: number,
-    chapter_id: number,
-    contributor_id: number,
-}) {
+    return res.json()
+}
+
+interface ChapterActionsProps {
+    fictionID:      number
+    chapterID:      number
+    contributorID:  number
+}
+
+export default function ChapterActions({ fictionID, chapterID, contributorID }: ChapterActionsProps) {
     const [loading, setLoading] = useState(false)
-
     const { data } = useSWR(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, fetcher)
 
     const user: User | null = data?.User_Profile || null
-
-    if (!user || user.id !== contributor_id) {
+    if (!user || user.id !== contributorID) {
         return null
     }
 
     const handleEdit = () => {
-        window.location.href = `/f/${fiction_id}/${chapter_id}/edit`
+        // Open the edit page in a new tab
+        window.open(`/f/${fictionID}/${chapterID}/edit`, "_blank")
     }
 
     const handleDelete = async () => {
@@ -30,7 +39,7 @@ export default function ChapterActions({ fiction_id, chapter_id, contributor_id 
 
         setLoading(true)
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/${chapter_id}/d`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/${chapterID}/d`, {
                 method: "DELETE",
                 credentials: "include",
             })
@@ -43,19 +52,33 @@ export default function ChapterActions({ fiction_id, chapter_id, contributor_id 
             window.location.reload()
         } catch (error) {
             console.error("Error deleting chapter:", error)
+            alert("An error occurred while deleting the chapter.")
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="flex gap-2">
-            <button onClick={handleEdit} className="text-blue-500 hover:underline" disabled={loading}>
+        <div className="flex gap-3">
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleEdit}
+                disabled={loading}
+                className="px-3 py-1 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
                 Edit
-            </button>
-            <button onClick={handleDelete} className="text-red-500 hover:underline" disabled={loading}>
-                Delete
-            </button>
+            </motion.button>
+
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+                {loading ? "Deleting..." : "Delete"}
+            </motion.button>
         </div>
     )
 }

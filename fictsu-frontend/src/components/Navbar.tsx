@@ -15,45 +15,33 @@ export default function Navbar() {
 
     useEffect(() => {
         fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, {
-            credentials: "include"
+            credentials: "include",
         })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.User_Profile) {
-                setUser(data.User_Profile)
-            }
-        })
-        .catch((error) => console.error("Failed to fetch user: ", error))
+            .then((res) => res.json())
+            .then((data) => data.User_Profile && setUser(data.User_Profile))
+            .catch((error) => console.error("Failed to fetch user: ", error))
     }, [])
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current instanceof HTMLElement && !dropdownRef.current.contains(event.target as Node)) {
-                setDropdownOpen(false)
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false);
             }
         }
 
-        document.addEventListener("mousedown", handleClickOutside)
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside)
-        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [])
 
     useEffect(() => {
         const handleLoginSuccess = (event: MessageEvent) => {
-            if (event.origin !== process.env.NEXT_PUBLIC_BACKEND_API) {
-                return
-            }
-
-            if (event.data === "login-success") {
-                window.location.reload()
+            if (event.origin === process.env.NEXT_PUBLIC_BACKEND_API && event.data === "login-success") {
+                window.location.reload();
             }
         }
 
-        window.addEventListener("message", handleLoginSuccess)
-        return () => {
-            window.removeEventListener("message", handleLoginSuccess)
-        }
+        window.addEventListener("message", handleLoginSuccess);
+        return () => window.removeEventListener("message", handleLoginSuccess);
     }, [])
 
     const handleLoginClick = () => {
@@ -71,21 +59,13 @@ export default function Navbar() {
         }, 1000)
     }
 
-    const handleProfileClick = () => {
-        setDropdownOpen(false)
-        router.push("/user")
-    }
-
     const handleLogout = async () => {
         await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/auth/logout`, {
             credentials: "include",
         })
+
         setUser(null)
         router.push("/")
-    }
-
-    const toggleDropdown = () => {
-        setDropdownOpen(!dropdownOpen)
     }
 
     const handlePostClick = () => {
@@ -97,40 +77,65 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="flex items-center justify-between p-4 bg-gray-900 text-white">
-            <Link href="/" className="text-2xl font-bold hover:text-gray-300">
-                Fictsu
+        <nav
+            className={`flex items-center justify-between px-6 transition-all duration-300 shadow-lg ${
+                user ? "py-2 bg-gray-800" : "py-4 bg-gray-900"
+            } text-white`}
+        >
+            <Link href="/" className="text-2xl font-bold hover:text-gray-300 transition">
+                FICTSU
             </Link>
+
             <div className="flex items-center space-x-4">
                 {pathname !== "/f/create" && (
                     <button
                         onClick={handlePostClick}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-300"
+                        aria-label="Post your work"
                     >
                         Post your work +
                     </button>
                 )}
                 {user ? (
                     <div className="relative" ref={dropdownRef}>
-                        <button onClick={toggleDropdown} className="flex items-center space-x-2">
-                            <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
-                            <span>{user.name}</span>
+                        <button
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                            className="flex items-center space-x-2 px-3 py-2 rounded-lg transition duration-300 hover:bg-gray-700"
+                            aria-label="User menu"
+                        >
+                            <img
+                                src={user.avatar_url}
+                                alt="User avatar"
+                                className="w-10 h-10 rounded-full border border-gray-600"
+                                referrerPolicy="no-referrer"
+                            />
+                            <span className="hidden sm:inline">{user.name}</span>
                         </button>
                         {dropdownOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden">
-                                <button onClick={handleProfileClick} className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                            <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg overflow-hidden transition-all duration-300">
+                                <button
+                                    onClick={() => {
+                                        setDropdownOpen(false);
+                                        router.push("/user");
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition duration-200"
+                                >
                                     Profile
                                 </button>
-                                <button onClick={handleLogout} className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                                <button
+                                    onClick={handleLogout}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition duration-200"
+                                >
                                     Logout
                                 </button>
                             </div>
                         )}
                     </div>
-                    ) : (
+                ) : (
                     <button
                         onClick={handleLoginClick}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300"
+                        aria-label="Login"
                     >
                         Login
                     </button>
