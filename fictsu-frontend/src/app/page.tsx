@@ -20,7 +20,6 @@ function FictionCard({ fiction }: { fiction: Fiction }) {
       href={`/f/${fiction.id}`}
       className="group block w-52 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition transform hover:-translate-y-1 m-0 p-0"
     >
-      {/* Cover Image */}
       <div className="relative w-full h-72">
         <Image
           src={fiction.cover || "/default-cover.png"}
@@ -30,14 +29,11 @@ function FictionCard({ fiction }: { fiction: Fiction }) {
           className="rounded-t-lg"
         />
       </div>
-      {/* Title and Contributor */}
       <div className="p-4 bg-white dark:bg-gray-900 h-full">
-        {/* Title with truncation */}
         <h2 className="text-sm font-semibold group-hover:text-blue-500 transition truncate" style={{ maxWidth: '100%' }}>
           {fiction.title}
         </h2>
 
-        {/* Contributor */}
         <p className="text-xs text-gray-700 dark:text-gray-300">
           ✍️ {fiction.contributor_name}
         </p>
@@ -56,10 +52,12 @@ export default async function HomePage() {
       {fictions.length === 0 ? (
         <p className="text-center text-gray-500">No fictions available.</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0">
-          {fictions.map((fiction) => (
-            <FictionCard key={fiction.id} fiction={fiction} />
-          ))}
+        <div className="flex justify-center">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-20">
+            {fictions.map((fiction) => (
+              <FictionCard key={fiction.id} fiction={fiction} />
+            ))}
+          </div>
         </div>
       )}
     </div>
