@@ -43,19 +43,41 @@ export default function FictionCreatePage() {
         }
     }
 
+    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setCover(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
     return (
         <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Create Fiction</h1>
 
             <form onSubmit={handleFictionSubmit(onSubmit)} className="space-y-6">
                 <div className="flex gap-7">
-                    <div className="relative">
+                    <div className="relative rounded-lg shadow-md cursor-pointer group">
                         <Image
                             src={cover}
                             alt="Fiction Cover"
                             width={230}
                             height={300}
-                            className="rounded-lg shadow-md object-cover"
+                            className="rounded-lg object-cover"
+                        />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end justify-center opacity-0 group-hover:opacity-35 transition-opacity pb-34 rounded-lg">
+                            <span className="text-white text-sm font-semibold">Upload Cover Image</span>
+                        </div>
+                        {/* Hidden File Input */}
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                     </div>
                     <div className="flex-1 space-y-4">
