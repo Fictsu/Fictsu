@@ -75,7 +75,8 @@ export default function FloatingToolsMenu() {
         return marked(markdownText) // Convert markdown to HTML
     }
 
-    const isFictionEditPage = /^\/f\/[^/]+\/edit$/.test(pathname)
+    // const isFictionEditPage = /^\/f\/[^/]+\/edit$/.test(pathname)
+    const isEditOrCreateFictionPage = /^\/f\/[^/]+\/edit$/.test(pathname) || pathname === "/f/create"
 
     return (
         <div className="fixed bottom-4 right-4 flex flex-col items-end z-50">
@@ -85,7 +86,7 @@ export default function FloatingToolsMenu() {
                         <h2 className="text-lg font-semibold p-2">Tools</h2>
                         <MenuButton icon={<Bot size={20} />} label="AI Chat" onClick={() => toggleTool("AI")} />
 
-                        {!isFictionEditPage && (
+                        {!isEditOrCreateFictionPage && (
                             <MenuButton icon={<ImageUp size={20} />} label="Upload Image" onClick={() => console.log("Upload Image")} />
                         )}
 
