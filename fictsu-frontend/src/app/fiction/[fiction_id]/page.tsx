@@ -48,7 +48,6 @@ export default function FictionPage() {
     return (
         <div className="max-w-screen-xl mx-auto px-24 mt-6 mb-6">
             <div className="flex flex-col md:flex-row gap-6 border border-gray-600 p-6 rounded-lg bg-gray-900">
-                {/* Cover Image Container */}
                 <div className="relative w-[250px] h-[375px] flex-shrink-0">
                     <Image
                         src={fiction.cover || "/default-cover.png"}
@@ -57,17 +56,14 @@ export default function FictionPage() {
                         height={375}
                         className="rounded-lg object-cover w-full h-full"
                     />
-                    {/* Favorite Button Positioned at Bottom-Right */}
                     <div className="absolute bottom-2 right-2">
                         <FavoriteButton fictionID={fiction.id} />
                     </div>
                 </div>
 
-                {/* Fiction Details */}
                 <div className="flex-grow space-y-4">
                     <h1 className="text-3xl font-bold text-gray-200">{fiction.title}</h1>
-                    
-                    {/* Subtitle */}
+
                     {fiction.subtitle && (
                         <p className="text-lg text-gray-400 italic">{fiction.subtitle}</p>
                     )}
@@ -78,12 +74,10 @@ export default function FictionPage() {
                     </p>
                     <p className="text-sm text-gray-400">Contributor: {fiction.contributor_name}</p>
 
-                    {/* Created Date */}
                     <p className="text-sm text-gray-400">Created: {new Date(fiction.created).toLocaleDateString()}</p>
 
                     <span className="mt-2 text-sm bg-gray-700 px-2 py-1 rounded-md text-gray-400">{fiction.status}</span>
 
-                    {/* Synopsis with "See More" Toggle */}
                     <div className="mt-4 break-words">
                         <div
                             className={`formatted-content overflow-hidden transition-all text-gray-350 ${showFullSynopsis ? "max-h-full" : "max-h-[100px]"}`}
