@@ -2,11 +2,11 @@
 
 import useSWR from "swr"
 import dynamic from "next/dynamic"
-import { useForm } from "react-hook-form"
 import { useRouter } from "next/navigation"
 import { ChapterForm } from "@/types/types"
 import "react-quill-new/dist/quill.snow.css"
 import { use, useState, useEffect } from "react"
+import { useForm, Controller } from "react-hook-form"
 import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
@@ -15,7 +15,6 @@ const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((re
 export default function ChapterEditPage({ params }: { params: Promise<{ fiction_id: string; chapter_id: string }> }) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
-    const [editorContent, setEditorContent] = useState<string>("")
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     const { fiction_id, chapter_id } = use(params)
@@ -29,14 +28,13 @@ export default function ChapterEditPage({ params }: { params: Promise<{ fiction_
         {
             onSuccess: (data) => {
                 if (data?.content) {
-                    setEditorContent(data.content) // Immediately set content when data is available
                     setValue("content", data.content)
                 }
             }
         }
     )
 
-    const { register, handleSubmit, setValue, formState: { errors } } = useForm<ChapterForm>()
+    const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<ChapterForm>()
 
     const redirectWithMessage = (message: string, path: string) => {
         setErrorMessage(message)
@@ -62,7 +60,9 @@ export default function ChapterEditPage({ params }: { params: Promise<{ fiction_
             return redirectWithMessage("You are not the contributor. Redirecting...", "/")
         }
 
-        setValue("title", chapterData.title)
+        if (chapterData?.title) {
+            setValue("title", chapterData.title)
+        }
     }, [userData, fictionData, chapterData, setValue, router, userError, fictionError, chapterError])
 
     const onSubmit = async (formData: ChapterForm) => {
@@ -82,11 +82,7 @@ export default function ChapterEditPage({ params }: { params: Promise<{ fiction_
         }
 
         alert("Chapter updated successfully!")
-
         mutate() // Refresh data after update
-
-        setEditorContent(formData.content) // Update editor content after submission
-
         router.push(`/f/${fiction_id}/${chapter_id}`)
     }
 
@@ -109,29 +105,39 @@ export default function ChapterEditPage({ params }: { params: Promise<{ fiction_
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-                <div>
-                    <label className="block text-gray-800 font-medium mb-2">Title</label>
-                    <input 
-                        {...register("title", { required: true })} 
-                        placeholder="Enter chapter title"
-                        className="w-full p-4 bg-white border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none transition-all duration-200 text-gray-900"
-                        disabled={loading}
+                <div className="space-y-2">
+                    <label className={`block font-medium ${errors.title ? "text-red-500" : "text-gray-700"}`}>
+                        {errors.title ? errors.title.message : "Title"}
+                    </label>
+                    <input
+                        {...register("title", { required: "Title is required" })}
+                        placeholder={errors.title ? errors.title.message : "Title"}
+                        className={`w-full p-4 border rounded-lg focus:outline-none focus:ring-2 ${errors.title ? "text-gray-900 border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"} text-gray-900`}
                     />
-                    {errors.title && <span className="text-red-500 text-sm">Title is required</span>}
                 </div>
 
-                <div>
-                    <label className="block text-gray-800 font-medium mb-2">Content</label>
-                    <ReactQuill
-                        value={editorContent}
-                        onChange={(content) => {
-                            setEditorContent(content)
-                            setValue("content", content)
-                        }}
-                        className="w-full p-0 bg-white rounded-lg focus:ring-4 focus:ring-blue-300 outline-none transition-all duration-200 text-gray-900"
-                        placeholder="Write your chapter content here..."
-                    />
-                    {errors.content && <span className="text-red-500 text-sm">Content is required</span>}
+                <div className="space-y-2">
+                    <label className={`block font-medium ${errors.content ? "text-red-500" : "text-gray-700"}`}>
+                        {errors.content ? errors.content.message : "Content"}
+                    </label>
+                    <div className={`border rounded-lg p-2 ${errors.content ? "border-red-500" : "border-gray-300"} text-gray-900`}>
+                        <Controller
+                            name="content"
+                            control={control}
+                            rules={{
+                                required: "Content is required",
+                                validate: value => value.replace(/<[^>]+>/g, "").trim().length > 0 || "Content is required"
+                            }}
+                            render={({ field }) => (
+                                <ReactQuill 
+                                    {...field} 
+                                    theme="snow" 
+                                    onChange={value => field.onChange(value.trim() ? value : "")} 
+                                    placeholder="Write your content here..."
+                                />
+                            )}
+                        />
+                    </div>
                 </div>
 
                 <button
