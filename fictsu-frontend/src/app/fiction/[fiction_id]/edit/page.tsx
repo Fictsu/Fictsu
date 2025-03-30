@@ -4,10 +4,10 @@ import useSWR from "swr"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { useForm } from "react-hook-form"
 import { useRouter } from "next/navigation"
 import "react-quill-new/dist/quill.snow.css"
 import { use, useState, useEffect } from "react"
+import { useForm, Controller } from "react-hook-form"
 import ChapterActions from "@/components/ChapterActions"
 import { Fiction, FictionForm, Chapter } from "@/types/types"
 import FloatingToolsMenu from "@/components/FloatingToolsMenu"
@@ -22,10 +22,10 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
     const fictionIDNumber = Number(fiction_id)
 
     const [loading, setLoading] = useState(false)
-    const [editorContent, setEditorContent] = useState("")
     const [cover, setCover] = useState("/default-cover.png")
 
-    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<FictionForm>()
+    const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FictionForm>()
+
     const { data: userData, error: userError } = useSWR(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, fetcher)
     const { data: fictionData, error: fictionError, mutate } = useSWR<{ Fiction: Fiction }>(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}`, fetcher)
 
@@ -57,7 +57,6 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
             setCover(fictionData.Fiction.cover || "/default-cover.png")
         }
 
-        setEditorContent(fictionData.Fiction.synopsis || "") // Set current synopsis content
     }, [userData, fictionData, fictionError, userError, reset, router])
 
     const onSubmit = async (formData: FictionForm) => {
@@ -77,7 +76,6 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
 
         alert("Fiction updated successfully!")
         mutate()
-        router.push(`/f/${fiction_id}`)
     }
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +85,7 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
             reader.onloadend = () => {
                 setCover(reader.result as string)
             }
+
             reader.readAsDataURL(file)
         }
     }    
@@ -98,7 +97,6 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
     return (
         <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Edit Fiction</h1>
-            
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex gap-7">
                     <div className="relative rounded-lg shadow-md cursor-pointer group">
@@ -125,33 +123,36 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
                         <div className="space-y-1">
                             <input
                                 {...register("title", { required: "Title is required" })}
-                                placeholder="Title *Required"
-                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                                placeholder={errors.title ? errors.title.message : "Title"}
+                                className={`w-full p-4 border rounded-lg focus:outline-none focus:ring-2 ${errors.title ? "text-red-500 border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"} text-gray-900`}
                             />
-                            {errors.title && <span className="text-red-500 text-sm">{errors.title.message}</span>}
                         </div>
 
                         <input
                             {...register("subtitle")}
                             placeholder="Subtitle"
-                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         />
 
-                        <input
-                            {...register("author")}
-                            placeholder="Author"
-                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
-                        />
+                        <div className="space-y-1">
+                            <input
+                                {...register("author", { required: "Author is required" })}
+                                placeholder={errors.author ? errors.author.message : "Author"}
+                                className={`w-full p-4 border rounded-lg focus:outline-none focus:ring-2 ${errors.author ? "text-red-500 border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"} text-gray-900`}
+                            />
+                        </div>
 
-                        <input
-                            {...register("artist")}
-                            placeholder="Artist"
-                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
-                        />
+                        <div className="space-y-1">
+                            <input
+                                {...register("artist", { required: "Artist is required" })}
+                                placeholder={errors.artist ? errors.artist.message : "Artist *If no artsis, type N/A"}
+                                className={`w-full p-4 border rounded-lg focus:outline-none focus:ring-2 ${errors.artist ? "text-red-500 border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"} text-gray-900`}
+                            />
+                        </div>
 
                         <select
                             {...register("status")}
-                            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900 pl-3"
+                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 pl-3"
                         >
                             <option value="Ongoing">Ongoing</option>
                             <option value="Completed">Completed</option>
@@ -161,17 +162,28 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
                     </div>
                 </div>
 
-                <div>
-                    <ReactQuill
-                        value={editorContent}
-                        onChange={(content) => {
-                            setEditorContent(content)
-                            setValue("synopsis", content)
-                        }}
-                        className="w-full p-0 bg-white border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 outline-none text-gray-900"
-                        placeholder="Write your synopsis here..."
-                    />
-                    {errors.synopsis && <span className="text-red-500">{errors.synopsis.message}</span>}
+                <div className="space-y-2">
+                    <label className={`block font-medium ${errors.synopsis ? "text-red-500" : "text-gray-700"}`}>
+                        {errors.synopsis ? errors.synopsis.message : "Synopsis"}
+                    </label>
+                    <div className={`border rounded-lg p-2 ${errors.synopsis ? "border-red-500" : "border-gray-300"} text-gray-900`}>
+                        <Controller
+                            name="synopsis"
+                            control={control}
+                            rules={{
+                                required: "Synopsis is required",
+                                validate: value => value.replace(/<[^>]+>/g, "").trim().length > 0 || "Synopsis is required"
+                            }}
+                            render={({ field }) => (
+                                <ReactQuill 
+                                    {...field} 
+                                    theme="snow" 
+                                    onChange={value => field.onChange(value.trim() ? value : "")} 
+                                    placeholder="Write your synopsis here..."
+                                />
+                            )}
+                        />
+                    </div>
                 </div>
 
                 <div className="flex justify-center mt-6">
