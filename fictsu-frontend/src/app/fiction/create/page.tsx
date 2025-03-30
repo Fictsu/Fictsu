@@ -57,6 +57,7 @@ export default function FictionCreatePage() {
             reader.onloadend = () => {
                 setCover(reader.result as string)
             }
+
             reader.readAsDataURL(file)
         }
     }
@@ -140,7 +141,7 @@ export default function FictionCreatePage() {
                             control={control}
                             rules={{
                                 required: "Synopsis is required",
-                                validate: value => value.replace(/<(.|\n)*?>/g, '').trim() !== "" || "Synopsis is required"
+                                validate: value => value.replace(/<[^>]+>/g, "").trim().length > 0 || "Synopsis is required"
                             }}
                             render={({ field }) => (
                                 <ReactQuill 
