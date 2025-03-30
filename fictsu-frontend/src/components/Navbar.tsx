@@ -25,7 +25,7 @@ export default function Navbar() {
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setDropdownOpen(false);
+                setDropdownOpen(false)
             }
         }
 
@@ -36,7 +36,7 @@ export default function Navbar() {
     useEffect(() => {
         const handleLoginSuccess = (event: MessageEvent) => {
             if (event.origin === process.env.NEXT_PUBLIC_BACKEND_API && event.data === "login-success") {
-                window.location.reload();
+                window.location.reload()
             }
         }
 
