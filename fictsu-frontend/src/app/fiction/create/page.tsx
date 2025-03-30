@@ -15,12 +15,17 @@ export default function FictionCreatePage() {
     const router = useRouter()
     
     const [loading, setLoading] = useState(false)
+    const [isCreated, setIsCreated] = useState(false)
     const [cover, setCover] = useState("/default-cover.png")
     const [fiction, setFiction] = useState<Fiction | null>(null)
 
     const { register, handleSubmit, control, formState: { errors } } = useForm<FictionForm>()
 
     const onSubmit = async (data: FictionForm) => {
+        if (loading || isCreated) {
+            return
+        }
+
         setLoading(true)
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/c`, {
@@ -33,14 +38,16 @@ export default function FictionCreatePage() {
             if (response.ok) {
                 const fictionData = await response.json()
                 setFiction(fictionData)
+                setIsCreated(true)
+                return
             } else {
                 console.error("Failed to create fiction")
             }
         } catch (error) {
             console.error("Error submitting fiction form", error)
-        } finally {
-            setLoading(false)
-        }
+        } 
+
+        setLoading(false)
     }
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,25 +158,37 @@ export default function FictionCreatePage() {
                     <button
                         type="submit"
                         className={`w-full max-w-xs py-3 text-white font-semibold rounded-lg transition-all duration-300 ${
-                            loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-lg"
+                            isCreated
+                                ? "bg-green-500 cursor-not-allowed"
+                                : loading
+                                ? "bg-blue-300 cursor-not-allowed"
+                                : "bg-blue-600 hover:bg-blue-700 shadow-lg"
                         }`}
-                        disabled={loading}
+                        disabled={loading || isCreated}
                     >
-                        {loading ? "Creating..." : "Create Fiction"}
+                        {isCreated ? "Created!" : loading ? "Creating..." : "Create Fiction"}
                     </button>
                 </div>
             </form>
 
-            {fiction && (
-                <div className="mt-6 text-center">
+            <div className="flex justify-center gap-4 mt-6">
+                {fiction && (
+                    <button
+                        onClick={() => router.push(`/f/${fiction.id}`)}
+                        className="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 shadow-lg"
+                    >
+                        Go to Fiction
+                    </button>
+                )}
+                {fiction && (
                     <button
                         onClick={() => router.push(`/f/${fiction.id}/ch/create`)}
-                        className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-lg"
+                        className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-lg"
                     >
                         Create First Chapter!
                     </button>
-                </div>
-            )}
+                )}
+            </div>
 
             <FloatingToolsMenu />
         </div>
