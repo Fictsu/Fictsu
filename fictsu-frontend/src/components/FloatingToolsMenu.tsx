@@ -1,11 +1,10 @@
 import { marked } from "marked"
-import { useState, useRef } from "react"
 import { usePathname } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
 import { Menu, X, Bot, ImagePlus, ImageUp, ArrowUp } from "lucide-react"
 
 export default function FloatingToolsMenu() {
     const pathname = usePathname()
-
     const chatContainerRef = useRef<HTMLDivElement>(null)
 
     const [loading, setLoading] = useState(false)
@@ -13,6 +12,21 @@ export default function FloatingToolsMenu() {
     const [inputPrompt, setInputPrompt] = useState("")
     const [activeTool, setActiveTool] = useState<"menu" | "AI" | null>(null)
     const [messages, setMessages] = useState<{ text: string; sender: "user" | "AI" }[]>([])
+
+    // Load messages from localStorage when component mounts
+    useEffect(() => {
+        const savedMessages = localStorage.getItem("chatHistory")
+        if (savedMessages) {
+            setMessages(JSON.parse(savedMessages))
+        }
+    }, [])
+
+    // Save messages to localStorage whenever messages change
+    useEffect(() => {
+        if (messages.length > 0) {
+            localStorage.setItem("chatHistory", JSON.stringify(messages))
+        }
+    }, [messages])
 
     const toggleTool = (tool: "menu" | "AI") => {
         setActiveTool((prev) => (prev === tool ? null : tool))
@@ -26,13 +40,7 @@ export default function FloatingToolsMenu() {
         setIsSending(true)
         setLoading(true)
 
-        // Add the user's message immediately to the chat
-        setMessages((prevMessages) => [
-            ...prevMessages,
-            { text: inputPrompt, sender: "user" },
-        ])
-
-        // Clear the input text immediately after sending
+        setMessages((prevMessages) => [...prevMessages, { text: inputPrompt, sender: "user" }])
         setInputPrompt("")
 
         try {
@@ -46,19 +54,10 @@ export default function FloatingToolsMenu() {
             const data = await response.json()
             const AIResponse = response.ok ? data.Received_Message : `Error: ${data.Error}`
 
-            // Add AI response to the messages state after fetching the response
-            setMessages((prevMessages) => [
-                ...prevMessages,
-                { text: AIResponse, sender: "AI" },
-            ])
+            setMessages((prevMessages) => [...prevMessages, { text: AIResponse, sender: "AI" }])
         } catch (error) {
             console.error("Error:", error)
-
-            // In case of error, set the AI message
-            setMessages((prevMessages) => [
-                ...prevMessages,
-                { text: "Failed to fetch AI response.", sender: "AI" },
-            ])
+            setMessages((prevMessages) => [...prevMessages, { text: "Failed to fetch AI response.", sender: "AI" }])
         }
 
         setLoading(false)
@@ -72,10 +71,9 @@ export default function FloatingToolsMenu() {
     }
 
     const parseMarkdown = (markdownText: string) => {
-        return marked(markdownText) // Convert markdown to HTML
+        return marked(markdownText)
     }
 
-    // const isFictionEditPage = /^\/f\/[^/]+\/edit$/.test(pathname)
     const isEditOrCreateFictionPage = /^\/f\/[^/]+\/edit$/.test(pathname) || pathname === "/f/create"
 
     return (
@@ -113,10 +111,10 @@ export default function FloatingToolsMenu() {
                     style={{
                         resize: "both",
                         overflow: "auto",
-                        minWidth: "300px",
-                        minHeight: "300px",
-                        maxWidth: "1200px",
-                        maxHeight: "85vh",
+                        minWidth: "350px",
+                        minHeight: "480px",
+                        maxWidth: "1480px",
+                        maxHeight: "87vh",
                         transformOrigin: "top left",
                     }}
                 >
@@ -129,12 +127,11 @@ export default function FloatingToolsMenu() {
 
                     {/* Chat Messages Container */}
                     <div ref={chatContainerRef} className="flex-1 overflow-auto mt-4 p-2 space-y-4">
-                        {/* Display messages from user and AI */}
                         {messages.map((message, index) => (
                             <div key={index} className={`flex ${message.sender === "user" ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`p-3 rounded-lg max-w-[70%] break-words ${message.sender === "user" ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}
                                     dangerouslySetInnerHTML={{
-                                        __html: parseMarkdown(message.text), // Parse markdown
+                                        __html: parseMarkdown(message.text),
                                     }} />
                             </div>
                         ))}
@@ -146,7 +143,7 @@ export default function FloatingToolsMenu() {
                         )}
                     </div>
 
-                    {/* Text Input Area with Send Button inside */}
+                    {/* Text Input Area with Send Button */}
                     <div className="relative mt-4">
                         <textarea
                             className="w-full p-3 border rounded resize-none focus:outline-blue-500 min-h-[60px] bg-gray-100 pr-12"
@@ -154,11 +151,10 @@ export default function FloatingToolsMenu() {
                             value={inputPrompt}
                             onChange={(e) => setInputPrompt(e.target.value)}
                         />
-                        {/* Send Button (Up Arrow) below the scroll */}
                         <button
                             className={`absolute bottom-5.5 right-4.5 w-10 h-10 flex items-center justify-center ${inputPrompt.trim() && !isSending ? 'bg-blue-500' : 'bg-gray-300'} text-white rounded-full transition-all`}
                             onClick={fetchAIResponse}
-                            disabled={!inputPrompt.trim() || isSending} // Disable if sending or empty
+                            disabled={!inputPrompt.trim() || isSending}
                         >
                             {isSending ? (
                                 <span className="animate-spin">
