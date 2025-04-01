@@ -11,15 +11,6 @@ import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
 
-function DataHandler(dataStr: any, DATA_TAG: any){
-    const formData = new FormData()
-    console.log(DATA_TAG.length)
-    for(let i=0; i< DATA_TAG.length; i++){
-        formData.append(DATA_TAG[i], dataStr[i])
-    }
-    return formData
-}
-
 export default function FictionCreatePage() {
     const router = useRouter()
     
@@ -38,10 +29,13 @@ export default function FictionCreatePage() {
 
         setLoading(true)
         try {
-            const DATA_TAG = ["cover", "title", "subtitle", "status", "synopsis", "author", "artist"]
-            var dataStr = [cover, data.title, data.subtitle, data.status, data.synopsis, data.author, data.artist]
-            console.log(data.status)
-            const formData = DataHandler(dataStr, DATA_TAG)
+            const formData = new FormData()
+            if (cover) {
+                formData.append("cover", cover)
+            }
+
+            Object.entries(data).forEach(([key, value]) => formData.append(key, value))
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/c`, {
                 method: "POST",
                 body: formData,
@@ -50,28 +44,26 @@ export default function FictionCreatePage() {
 
             if (response.ok) {
                 const fictionData = await response.json()
-                console.log(fictionData)
                 setFiction(fictionData)
                 setIsCreated(true)
-                return
             } else {
-                console.error("Failed to create fiction")
+                console.error("Failed to create fiction", await response.text())
             }
         } catch (error) {
             console.error("Error submitting fiction form", error)
-        } 
-
-        setLoading(false)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        var file = e.target.files?.[0] || null
+        const file = e.target.files?.[0] || null
         if (file) {
-            setPreviewURL(URL.createObjectURL(file))
-            console.log(previewURL)
             setCover(file)
-            }
+            setPreviewURL(URL.createObjectURL(file))
+        }
     }
+
     return (
         <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Create Fiction</h1>
