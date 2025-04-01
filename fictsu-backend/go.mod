@@ -1,7 +1,6 @@
 module github.com/Fictsu/Fictsu
 
 go 1.22.3
-
 require (
 	cloud.google.com/go/storage v1.43.0
 	firebase.google.com/go/v4 v4.15.1
@@ -36,7 +35,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.23.0 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
