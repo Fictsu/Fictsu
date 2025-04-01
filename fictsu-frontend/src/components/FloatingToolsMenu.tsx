@@ -10,23 +10,42 @@ export default function FloatingToolsMenu() {
     const [loading, setLoading] = useState(false)
     const [isSending, setIsSending] = useState(false)
     const [inputPrompt, setInputPrompt] = useState("")
+    const [userId, setUserID] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<"menu" | "AI" | null>(null)
     const [messages, setMessages] = useState<{ text: string; sender: "user" | "AI" }[]>([])
 
-    // Load messages from localStorage when component mounts
+    // Fetch user ID from backend
     useEffect(() => {
-        const savedMessages = localStorage.getItem("chatHistory")
-        if (savedMessages) {
-            setMessages(JSON.parse(savedMessages))
+        const fetchUser = async () => {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, { credentials: "include" })
+                if (!res.ok) throw new Error("Failed to fetch user")
+
+                const data = await res.json()
+                setUserID(data.id) // Assuming backend sends { id: "user123" }
+            } catch (error) {
+                console.error(error)
+            }
         }
+        fetchUser()
     }, [])
 
-    // Save messages to localStorage whenever messages change
+    // Load chat history when userId is set
     useEffect(() => {
-        if (messages.length > 0) {
-            localStorage.setItem("chatHistory", JSON.stringify(messages))
+        if (userId) {
+            const savedMessages = localStorage.getItem(`chat_history_${userId}`)
+            if (savedMessages) {
+                setMessages(JSON.parse(savedMessages))
+            }
         }
-    }, [messages])
+    }, [userId])
+
+    // Save chat history when messages update
+    useEffect(() => {
+        if (userId) {
+            localStorage.setItem(`chat_history_${userId}`, JSON.stringify(messages))
+        }
+    }, [messages, userId])
 
     const toggleTool = (tool: "menu" | "AI") => {
         setActiveTool((prev) => (prev === tool ? null : tool))
@@ -130,20 +149,13 @@ export default function FloatingToolsMenu() {
                         {messages.map((message, index) => (
                             <div key={index} className={`flex ${message.sender === "user" ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`p-3 rounded-lg max-w-[70%] break-words ${message.sender === "user" ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}
-                                    dangerouslySetInnerHTML={{
-                                        __html: parseMarkdown(message.text),
-                                    }} />
+                                    dangerouslySetInnerHTML={{ __html: parseMarkdown(message.text) }} />
                             </div>
                         ))}
-
-                        {loading && (
-                            <div className="flex justify-center items-center">
-                                <span className="text-blue-500">Loading...</span>
-                            </div>
-                        )}
+                        {loading && <div className="flex justify-center items-center"><span className="text-blue-500">Loading...</span></div>}
                     </div>
 
-                    {/* Text Input Area with Send Button */}
+                    {/* Text Input Area */}
                     <div className="relative mt-4">
                         <textarea
                             className="w-full p-3 border rounded resize-none focus:outline-blue-500 min-h-[60px] bg-gray-100 pr-12"
@@ -156,13 +168,7 @@ export default function FloatingToolsMenu() {
                             onClick={fetchAIResponse}
                             disabled={!inputPrompt.trim() || isSending}
                         >
-                            {isSending ? (
-                                <span className="animate-spin">
-                                    <ArrowUp size={20} />
-                                </span>
-                            ) : (
-                                <ArrowUp size={20} />
-                            )}
+                            {isSending ? <span className="animate-spin"><ArrowUp size={20} /></span> : <ArrowUp size={20} />}
                         </button>
                     </div>
                 </div>

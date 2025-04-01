@@ -171,7 +171,7 @@ export default function FictionCreatePage() {
                         type="submit"
                         className={`w-full max-w-xs py-3 text-white font-semibold rounded-lg transition-all duration-300 ${
                             isCreated
-                                ? "bg-green-500 cursor-not-allowed"
+                                ? "bg-green-500 cursor-not-allowed mb-6"
                                 : loading
                                 ? "bg-blue-300 cursor-not-allowed"
                                 : "bg-blue-600 hover:bg-blue-700 shadow-lg"
@@ -183,7 +183,7 @@ export default function FictionCreatePage() {
                 </div>
             </form>
 
-            <div className="flex justify-center gap-4 mt-6">
+            <div className="flex justify-center gap-4">
                 {fiction && (
                     <button
                         onClick={() => router.push(`/f/${fiction.id}`)}
