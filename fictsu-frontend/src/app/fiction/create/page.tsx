@@ -11,13 +11,23 @@ import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
 
+function DataHandler(dataStr: any, DATA_TAG: any){
+    const formData = new FormData()
+    console.log(DATA_TAG.length)
+    for(let i=0; i< DATA_TAG.length; i++){
+        formData.append(DATA_TAG[i], dataStr[i])
+    }
+    return formData
+}
+
 export default function FictionCreatePage() {
     const router = useRouter()
     
     const [loading, setLoading] = useState(false)
     const [isCreated, setIsCreated] = useState(false)
-    const [cover, setCover] = useState("/default-cover.png")
+    const [cover, setCover] = useState<File | null>(null)
     const [fiction, setFiction] = useState<Fiction | null>(null)
+    const [previewURL, setPreviewURL] = useState<string>("/default-cover.png")
 
     const { register, handleSubmit, control, formState: { errors } } = useForm<FictionForm>()
 
@@ -28,15 +38,19 @@ export default function FictionCreatePage() {
 
         setLoading(true)
         try {
+            const DATA_TAG = ["cover", "title", "subtitle", "status", "synopsis", "author", "artist"]
+            var dataStr = [cover, data.title, data.subtitle, data.status, data.synopsis, data.author, data.artist]
+            console.log(data.status)
+            const formData = DataHandler(dataStr, DATA_TAG)
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/c`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
+                body: formData,
                 credentials: "include",
             })
 
             if (response.ok) {
                 const fictionData = await response.json()
+                console.log(fictionData)
                 setFiction(fictionData)
                 setIsCreated(true)
                 return
@@ -51,17 +65,13 @@ export default function FictionCreatePage() {
     }
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
+        var file = e.target.files?.[0] || null
         if (file) {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setCover(reader.result as string)
+            setPreviewURL(URL.createObjectURL(file))
+            console.log(previewURL)
+            setCover(file)
             }
-
-            reader.readAsDataURL(file)
-        }
     }
-
     return (
         <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Create Fiction</h1>
@@ -70,11 +80,12 @@ export default function FictionCreatePage() {
                 <div className="flex gap-7">
                     <div className="relative rounded-lg shadow-md cursor-pointer group">
                         <Image
-                            src={cover}
+                            src={previewURL}
                             alt="Fiction Cover"
                             width={230}
                             height={300}
                             className="rounded-lg object-cover"
+                            unoptimized
                         />
                         {/* Hover overlay */}
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end justify-center opacity-0 group-hover:opacity-35 transition-opacity pb-34 rounded-lg">

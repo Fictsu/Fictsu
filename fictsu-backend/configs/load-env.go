@@ -1,26 +1,27 @@
 package config
 
 import (
-	"os"
 	"log"
+	"os"
+
 	"github.com/joho/godotenv"
 )
 
 var (
-	ClientID          	string
-	ClientSecret      	string
-	ClientCallbackURL 	string
+	ClientID          string
+	ClientSecret      string
+	ClientCallbackURL string
 
-	OpenAIKey    		string
-	OpenAIOrgID  		string
-	OpenAIProjID 		string
+	OpenAIKey    string
+	OpenAIOrgID  string
+	OpenAIProjID string
 
-	SessionKey 			string
+	SessionKey string
 
-	FrontEndURL 		string
+	FrontEndURL string
 
-	CharImagePath 		string
-	BGImagePath  		string
+	CoverPath  string
+	BucketName string
 )
 
 func LoadEnv() {
@@ -29,26 +30,25 @@ func LoadEnv() {
 		log.Fatal("Error loading .env file", err)
 	}
 
-	ClientID 			= os.Getenv("CLIENT_ID")
-	ClientSecret 		= os.Getenv("CLIENT_SECRET")
-	ClientCallbackURL 	= os.Getenv("CLIENT_CALLBACK_URL")
+	ClientID = os.Getenv("CLIENT_ID")
+	ClientSecret = os.Getenv("CLIENT_SECRET")
+	ClientCallbackURL = os.Getenv("CLIENT_CALLBACK_URL")
 
-	OpenAIKey 			= os.Getenv("OPENAI_KEY")
-	OpenAIOrgID 		= os.Getenv("OPENAI_ORG_ID")
-	OpenAIProjID 		= os.Getenv("OPENAI_PROJ_ID")
+	OpenAIKey = os.Getenv("OPENAI_KEY")
+	OpenAIOrgID = os.Getenv("OPENAI_ORG_ID")
+	OpenAIProjID = os.Getenv("OPENAI_PROJ_ID")
 
-	SessionKey 			= os.Getenv("SESSION_KEY")
+	SessionKey = os.Getenv("SESSION_KEY")
 
-	FrontEndURL 		= os.Getenv("FRONT_END_URL")
+	FrontEndURL = os.Getenv("FRONT_END_URL")
 
-	CharImagePath 		= os.Getenv("CHAR_IMG_PATH")
-	BGImagePath 		= os.Getenv("BG_IMG_PATH")
+	CoverPath = os.Getenv("COVER_PATH")
+	BucketName = os.Getenv("BUCKET_NAME")
 
 	// Fail fast if any required environment variable is missing
 	if OpenAIKey == "" || OpenAIOrgID == "" || OpenAIProjID == "" ||
-	ClientID == "" || ClientSecret == "" || ClientCallbackURL == "" ||
-	SessionKey == "" || FrontEndURL == "" || CharImagePath == "" ||
-	BGImagePath == "" {
+		ClientID == "" || ClientSecret == "" || ClientCallbackURL == "" ||
+		SessionKey == "" || FrontEndURL == "" || CoverPath == "" || BucketName == "" {
 		log.Fatal("Missing one or more required environment variables")
 	}
 }

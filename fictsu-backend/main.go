@@ -2,14 +2,15 @@ package main
 
 import (
 	"time"
-	"github.com/gin-gonic/gin"
-	"github.com/markbates/goth"
-	"github.com/gorilla/sessions"
+
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
+	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/google"
 
-	db "github.com/Fictsu/Fictsu/database"
 	configs "github.com/Fictsu/Fictsu/configs"
+	db "github.com/Fictsu/Fictsu/database"
 	handlers "github.com/Fictsu/Fictsu/handlers"
 )
 
@@ -34,6 +35,7 @@ func main() {
 
 	db.Connection()
 	defer db.CloseConnection()
+	configs.InitFirebaseApp()
 
 	router := gin.Default()
 
@@ -100,7 +102,7 @@ func main() {
 	// OpenAI
 	AI := API.Group("/ai")
 	AI.POST("/storyline/c", handlers.OpenAICreateStoryline)
-	AI.POST("/char/c", handlers.OpenAICreateCharacter)
+	//AI.POST("/char/c", handlers.OpenAICreateCharacter)
 
 	router.Run()
 }

@@ -1,14 +1,17 @@
 package handlers
 
 import (
-	"time"
-	"strconv"
-	"net/http"
 	"database/sql"
-	"github.com/lib/pq"
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
+	"github.com/lib/pq"
 
+	env "github.com/Fictsu/Fictsu/configs"
 	db "github.com/Fictsu/Fictsu/database"
 	models "github.com/Fictsu/Fictsu/models"
 )
@@ -129,26 +132,31 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 
 	IDToDB := IDFromSession.(int)
 	nameToDB := nameFromSession.(string)
-	fictionCreateRequest := models.FictionModel{}
-	if err := ctx.ShouldBindJSON(&fictionCreateRequest); err != nil {
+	fictionCreateRequest := models.FictionForm{}
+	if err := ctx.ShouldBind(&fictionCreateRequest); err != nil {
+		fmt.Println(err)
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid data provided for fiction creation"})
 		return
 	}
-
 	fictionCreateRequest.Contributor_ID = IDToDB
 	fictionCreateRequest.Contributor_Name = nameToDB
 
 	var newFictionID int
 	var newCreatedTS time.Time
+	fmt.Println(fictionCreateRequest.Title)
+	fmt.Println(fictionCreateRequest.Subtitle)
+	fmt.Println(fictionCreateRequest.Author)
+	fmt.Println(fictionCreateRequest.Artist)
+	fmt.Println(fictionCreateRequest.Synopsis)
+	fmt.Println(fictionCreateRequest.Status)
 	err := db.DB.QueryRow(
 		`
-		INSERT INTO Fictions (Contributor_ID, Contributor_Name, Cover, Title, Subtitle, Author, Artist, Status, Synopsis)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO Fictions (Contributor_ID, Contributor_Name, Title, Subtitle, Author, Artist, Status, Synopsis)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING ID, Created
 		`,
 		fictionCreateRequest.Contributor_ID,
 		fictionCreateRequest.Contributor_Name,
-		fictionCreateRequest.Cover,
 		fictionCreateRequest.Title,
 		fictionCreateRequest.Subtitle,
 		fictionCreateRequest.Author,
@@ -159,15 +167,63 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		&newFictionID,
 		&newCreatedTS,
 	)
-
 	if err != nil {
+		fmt.Println(err)
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create fiction"})
 		return
 	}
-
+	fmt.Println("finish create fiction")
 	fictionCreateRequest.ID = newFictionID
 	fictionCreateRequest.Created = newCreatedTS
-	ctx.IndentedJSON(http.StatusCreated, fictionCreateRequest)
+	fmt.Println(fictionCreateRequest.ID)
+	file, header, FileErr := ctx.Request.FormFile("cover")
+	if FileErr == nil {
+		fmt.Println("Have cover")
+		var coverPath string = env.CoverPath + strconv.Itoa(newFictionID)
+		url, upErr := UploadImageToFirebase(file, header, coverPath, env.BucketName)
+		if upErr != nil {
+			fmt.Println(upErr)
+		} else {
+			result, updErr := db.DB.Exec(
+				`
+				UPDATE fictions
+				SET cover = $1
+				WHERE id = $2
+				`, url, newFictionID)
+			if updErr != nil {
+				fmt.Println(updErr)
+				ctx.JSON(http.StatusBadRequest, gin.H{"Error ": updErr})
+				return
+			} else {
+				rowsAffected, err := result.RowsAffected()
+				if err != nil {
+					fmt.Println("Error checking rows affected:", err)
+					ctx.JSON(http.StatusCreated, fictionCreateRequest)
+					return
+				}
+				if rowsAffected == 0 {
+					ctx.JSON(http.StatusCreated, fictionCreateRequest)
+					return
+				}
+			}
+		}
+	} else {
+		fmt.Println("Err is: ", FileErr)
+		ctx.JSON(http.StatusCreated, fictionCreateRequest)
+		return
+	}
+	fiction := models.FictionModel{}
+	fiction.ID = fictionCreateRequest.ID
+	fiction.Artist = fictionCreateRequest.Artist
+	fiction.Author = fictionCreateRequest.Author
+	fiction.Contributor_ID = fictionCreateRequest.Contributor_ID
+	fiction.Contributor_Name = fictionCreateRequest.Contributor_Name
+	fiction.Created = fictionCreateRequest.Created
+	fiction.Status = fictionCreateRequest.Status
+	fiction.Title = fictionCreateRequest.Title
+	fiction.Subtitle = fictionCreateRequest.Subtitle
+	fiction.Synopsis = fictionCreateRequest.Synopsis
+	ctx.JSON(http.StatusCreated, fiction)
 }
 
 func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
@@ -274,7 +330,7 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	query = query[:len(query) - 2] + " WHERE ID = $" + strconv.Itoa(paramIndex)
+	query = query[:len(query)-2] + " WHERE ID = $" + strconv.Itoa(paramIndex)
 	params = append(params, fictionID)
 
 	result, err := db.DB.Exec(query, params...)
@@ -412,7 +468,7 @@ func GetContributedFictions(user_ID int) ([]models.FictionModel, error) {
 		contriFictions = append(contriFictions, fiction)
 	}
 
-	return contriFictions, nil	
+	return contriFictions, nil
 }
 
 func GetFavFictions(user_ID int) ([]models.FictionModel, error) {

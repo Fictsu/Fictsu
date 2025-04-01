@@ -1,18 +1,16 @@
 package handlers
 
 import (
-	"io"
-	"os"
-	"fmt"
 	"bytes"
-	"strconv"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
-	db "github.com/Fictsu/Fictsu/database"
-	models "github.com/Fictsu/Fictsu/models"
 	configs "github.com/Fictsu/Fictsu/configs"
+	models "github.com/Fictsu/Fictsu/models"
 )
 
 const (
@@ -30,7 +28,7 @@ const (
 
 func AddHeader(request *http.Request) {
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Authorization", "Bearer " + configs.OpenAIKey)
+	request.Header.Add("Authorization", "Bearer "+configs.OpenAIKey)
 	request.Header.Add("OpenAI-Organization", configs.OpenAIOrgID)
 	request.Header.Add("OpenAI-Project", configs.OpenAIProjID)
 }
@@ -50,7 +48,7 @@ func OpenAICreateStoryline(ctx *gin.Context) {
 		"model": "gpt-4o",
 		"messages": []map[string]string{
 			{
-				"role": "user",
+				"role":    "user",
 				"content": promptMessage,
 			},
 		},
@@ -105,7 +103,7 @@ func OpenAICreateStoryline(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, gin.H{"Received_Message": responseBody.Choices[0].Message.Content})
 }
 
-func OpenAICreateCharacter(ctx *gin.Context) {
+/*func OpenAICreateCharacter(ctx *gin.Context) {
 	requestBody := models.OpenAIRequestBodyTextToImage{}
 	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid request body"})
@@ -174,39 +172,5 @@ func OpenAICreateCharacter(ctx *gin.Context) {
 			CharacterImage
 		`,
 	).Scan(&count)
-
-	imageURL := responseBody.Data[0].URL
-	filePath := configs.CharImagePath + strconv.Itoa(count+1) + ".png"
-	err = DownloadImage(imageURL, filePath)
-	if err != nil {
-		fmt.Println("Error saving image:", err)
-		return
-	}
-
-	fmt.Println("Image saved successfully to", filePath)
 }
-
-func DownloadImage(url, file_path string) error {
-	// Send GET request
-	response, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Error getting response: ", err)
-		return err
-	}
-
-	defer response.Body.Close()
-
-	// Create a file
-	file, err := os.Create(file_path)
-	if err != nil {
-		fmt.Println("Error creating file: ", err)
-		return err
-	}
-
-	defer file.Close()
-
-	// Copy the image data to the file
-	_, err = io.Copy(file, response.Body)
-	fmt.Println("Error copying file: ", err)
-	return err
-}
+*/
