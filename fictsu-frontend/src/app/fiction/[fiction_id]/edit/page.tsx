@@ -50,41 +50,31 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
             return
         }
 
-        if (!userData.User_Profile || !userData.User_Profile.id) {
-            alert("You must be logged in. Redirecting...")
-            router.push("/")
-            return
-        }
-
-        if (userData.User_Profile.id !== fictionData.Fiction.contributor_id) {
-            alert("You are not the contributor. Redirecting...")
+        if (!userData.User_Profile?.id || userData.User_Profile.id !== fictionData.Fiction.contributor_id) {
+            alert("Unauthorized access. Redirecting...")
             router.push("/")
             return
         }
 
         reset(fictionData.Fiction)
-        if (!cover || cover === "/default-cover.png") { 
-            setCover(fictionData.Fiction.cover || "/default-cover.png")
-        }
-
+        setCover(fictionData.Fiction.cover || "/default-cover.png")
     }, [userData, fictionData, fictionError, userError, reset, router])
 
     const onSubmit = async (formData: FictionForm) => {
         setLoading(true)
-        const DATA_TAG = ["cover", "title", "subtitle", "status", "synopsis", "author", "artist"]
-        var dataStr = [coverFile, formData.title, formData.subtitle, formData.status, formData.synopsis, formData.author, formData.artist]
-        const multiFormData = DataHandler(dataStr, DATA_TAG)
-        console.log(multiFormData)
+        const formDataObj = new FormData()
+        formDataObj.append("cover", coverFile || "")
+        Object.entries(formData).forEach(([key, value]) => formDataObj.append(key, value))
+
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/u`, {
             method: "PUT",
             credentials: "include",
-            body: multiFormData,
+            body: formDataObj,
         })
 
         setLoading(false)
         if (!response.ok) {
-            alert("Failed to update fiction.")
-            return
+            return alert("Failed to update fiction.")
         }
 
         alert("Fiction updated successfully!")
@@ -96,13 +86,10 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
         setCoverFile(file)
         if (file) {
             const reader = new FileReader()
-            reader.onloadend = () => {
-                setCover(reader.result as string)
-            }
-
+            reader.onloadend = () => setCover(reader.result as string)
             reader.readAsDataURL(file)
         }
-    }    
+    }  
 
     if (!fictionData || !userData) {
         return <p className="text-center mt-10">Loading...</p>
