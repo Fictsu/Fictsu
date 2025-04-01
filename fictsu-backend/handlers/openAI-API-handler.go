@@ -16,9 +16,16 @@ import (
 )
 
 const (
-	INTRO_TEXT string = "Please generate story about: "
-	OUTRO_TEXT string = " Only provide structure of story not whole story."
-	INTRO_CHAR string = "Please generate character follow this prompt in T-pose so image can be use as reference for future generation. The prompt is: '"
+	INTRO_TEXT string = `Analyze my input and respond based on these rules:
+	1. If I provide a story idea, generate a well-structured outline with logical progression.
+	2. If I give a sentence or paragraph and request corrections, return a refined version with proper grammar while preserving the original intent.
+	3. If I ask for advice on a storyline, character, or plot, provide insightful suggestions.
+	4. If my input is a writing prompt, expand on it creatively and engagingly.
+	5. If I make a general request or greeting unrelated to storytelling, respond concisely and appropriately.
+	6. If my request is unclear or doesn't fit these rules, ask for clarification or politely decline.`
+
+	OUTRO_TEXT string = " Always ensure your response aligns with these rules and maintains coherence and creativity."
+	INTRO_CHAR string = "Please generate a character in a T-pose based on this prompt, so the image can be used as a reference for future generation. The prompt is: '"
 )
 
 func AddHeader(request *http.Request) {
