@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 
-	env "github.com/Fictsu/Fictsu/configs"
+	configs "github.com/Fictsu/Fictsu/configs"
 	db "github.com/Fictsu/Fictsu/database"
 	models "github.com/Fictsu/Fictsu/models"
 )
@@ -134,23 +134,18 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 
 	IDToDB := IDFromSession.(int)
 	nameToDB := nameFromSession.(string)
+
 	fictionCreateRequest := models.FictionForm{}
 	if err := ctx.ShouldBind(&fictionCreateRequest); err != nil {
-		fmt.Println(err)
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "Invalid data provided for fiction creation"})
 		return
 	}
+
 	fictionCreateRequest.Contributor_ID = IDToDB
 	fictionCreateRequest.Contributor_Name = nameToDB
 
 	var newFictionID int
 	var newCreatedTS time.Time
-	fmt.Println(fictionCreateRequest.Title)
-	fmt.Println(fictionCreateRequest.Subtitle)
-	fmt.Println(fictionCreateRequest.Author)
-	fmt.Println(fictionCreateRequest.Artist)
-	fmt.Println(fictionCreateRequest.Synopsis)
-	fmt.Println(fictionCreateRequest.Status)
 	err := db.DB.QueryRow(
 		`
 		INSERT INTO Fictions (Contributor_ID, Contributor_Name, Title, Subtitle, Author, Artist, Status, Synopsis)
@@ -169,51 +164,27 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		&newFictionID,
 		&newCreatedTS,
 	)
+
 	if err != nil {
-		fmt.Println(err)
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to create fiction"})
 		return
 	}
-	fmt.Println("finish create fiction")
+
 	fictionCreateRequest.ID = newFictionID
 	fictionCreateRequest.Created = newCreatedTS
-	fmt.Println(fictionCreateRequest.ID)
-	file, header, FileErr := ctx.Request.FormFile("cover")
-	if FileErr == nil {
-		fmt.Println("Have cover")
-		var coverPath string = env.CoverPath + strconv.Itoa(newFictionID)
-		url, upErr := UploadImageToFirebase(file, header, coverPath, env.BucketName)
-		if upErr != nil {
-			fmt.Println(upErr)
-		} else {
-			result, updErr := db.DB.Exec(
-				`
-				UPDATE fictions
-				SET cover = $1
-				WHERE id = $2
-				`, url, newFictionID)
-			if updErr != nil {
-				fmt.Println(updErr)
-				ctx.JSON(http.StatusBadRequest, gin.H{"Error ": updErr})
+
+	file, header, fileErr := ctx.Request.FormFile("cover")
+	if fileErr == nil {
+		coverPath := configs.CoverPath + strconv.Itoa(newFictionID)
+		URL, uploadErr := UploadImageToFirebase(file, header, coverPath, configs.BucketName)
+		if uploadErr == nil {
+			if _, updateErr := db.DB.Exec("UPDATE fictions SET cover = $1 WHERE id = $2", URL, newFictionID); updateErr != nil {
+				ctx.JSON(http.StatusBadRequest, gin.H{"Error": updateErr.Error()})
 				return
-			} else {
-				rowsAffected, err := result.RowsAffected()
-				if err != nil {
-					fmt.Println("Error checking rows affected:", err)
-					ctx.JSON(http.StatusCreated, fictionCreateRequest)
-					return
-				}
-				if rowsAffected == 0 {
-					ctx.JSON(http.StatusCreated, fictionCreateRequest)
-					return
-				}
 			}
 		}
-	} else {
-		fmt.Println("Err is: ", FileErr)
-		ctx.JSON(http.StatusCreated, fictionCreateRequest)
-		return
 	}
+
 	fiction := models.FictionModel{}
 	fiction.ID = fictionCreateRequest.ID
 	fiction.Artist = fictionCreateRequest.Artist
@@ -225,7 +196,7 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	fiction.Title = fictionCreateRequest.Title
 	fiction.Subtitle = fictionCreateRequest.Subtitle
 	fiction.Synopsis = fictionCreateRequest.Synopsis
-	ctx.JSON(http.StatusCreated, fiction)
+	ctx.IndentedJSON(http.StatusCreated, fiction)
 }
 
 func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
@@ -349,8 +320,8 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	file, header, FileErr := ctx.Request.FormFile("cover")
 	if FileErr == nil {
 		fmt.Println("Have cover")
-		var coverPath string = env.CoverPath + fictionID
-		url, upErr := UploadImageToFirebase(file, header, coverPath, env.BucketName)
+		var coverPath string = configs.CoverPath + fictionID
+		url, upErr := UploadImageToFirebase(file, header, coverPath, configs.BucketName)
 		if upErr != nil {
 			fmt.Println(upErr)
 		} else {

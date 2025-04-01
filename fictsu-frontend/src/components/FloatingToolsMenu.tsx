@@ -10,7 +10,7 @@ export default function FloatingToolsMenu() {
     const [loading, setLoading] = useState(false)
     const [isSending, setIsSending] = useState(false)
     const [inputPrompt, setInputPrompt] = useState("")
-    const [userId, setUserID] = useState<string | null>(null)
+    const [userID, setUserID] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<"menu" | "AI" | null>(null)
     const [messages, setMessages] = useState<{ text: string; sender: "user" | "AI" }[]>([])
 
@@ -22,7 +22,7 @@ export default function FloatingToolsMenu() {
                 if (!res.ok) throw new Error("Failed to fetch user")
 
                 const data = await res.json()
-                setUserID(data.id) // Assuming backend sends { id: "user123" }
+                setUserID(data.User_Profile.id) // Assuming backend sends { id: "user123" }
             } catch (error) {
                 console.error(error)
             }
@@ -32,20 +32,20 @@ export default function FloatingToolsMenu() {
 
     // Load chat history when userId is set
     useEffect(() => {
-        if (userId) {
-            const savedMessages = localStorage.getItem(`chat_history_${userId}`)
+        if (userID) {
+            const savedMessages = localStorage.getItem(`chat_history_${userID}`)
             if (savedMessages) {
                 setMessages(JSON.parse(savedMessages))
             }
         }
-    }, [userId])
+    }, [userID])
 
     // Save chat history when messages update
     useEffect(() => {
-        if (userId) {
-            localStorage.setItem(`chat_history_${userId}`, JSON.stringify(messages))
+        if (userID) {
+            localStorage.setItem(`chat_history_${userID}`, JSON.stringify(messages))
         }
-    }, [messages, userId])
+    }, [messages, userID])
 
     const toggleTool = (tool: "menu" | "AI") => {
         setActiveTool((prev) => (prev === tool ? null : tool))

@@ -2,15 +2,14 @@ package main
 
 import (
 	"time"
-
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
+	"github.com/gorilla/sessions"
+	"github.com/gin-contrib/cors"
 	"github.com/markbates/goth/providers/google"
 
-	configs "github.com/Fictsu/Fictsu/configs"
 	db "github.com/Fictsu/Fictsu/database"
+	configs "github.com/Fictsu/Fictsu/configs"
 	handlers "github.com/Fictsu/Fictsu/handlers"
 )
 
@@ -53,8 +52,8 @@ func main() {
 	// GET
 	API.GET("/f", handlers.GetAllFictions)
 	API.GET("/f/:fictionID", handlers.GetFiction)
-	API.GET("/auth/:provider", handlers.GetOpenAuthorization)
 	API.GET("/f/:fictionID/:chapterID", handlers.GetChapter)
+	API.GET("/auth/:provider", handlers.GetOpenAuthorization)
 
 	API.GET("/user", func(ctx *gin.Context) {
 		handlers.GetUserProfile(ctx, store)
@@ -102,7 +101,7 @@ func main() {
 	// OpenAI
 	AI := API.Group("/ai")
 	AI.POST("/storyline/c", handlers.OpenAICreateStoryline)
-	//AI.POST("/char/c", handlers.OpenAICreateCharacter)
+	// AI.POST("/char/c", handlers.OpenAICreateCharacter)
 
 	router.Run()
 }

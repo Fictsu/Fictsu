@@ -16,7 +16,7 @@ CREATE TABLE Fictions (
     ID                  SERIAL PRIMARY KEY,
     Contributor_ID      INT NOT NULL REFERENCES Users(ID),
     Contributor_Name    VARCHAR(255) NOT NULL,
-    Cover               TEXT,
+    Cover               TEXT DEFAULT '/default-cover.png',
     Title               VARCHAR(255) NOT NULL,
     Subtitle            VARCHAR(255),
     Author              VARCHAR(255),
