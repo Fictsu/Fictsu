@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"time"
 
 	env "github.com/Fictsu/Fictsu/configs"
 
@@ -27,6 +28,7 @@ func UploadImageToFirebase(file multipart.File, fileHeader *multipart.FileHeader
 	fmt.Println("Get bucket")
 	writer := bucket.Object(objectPath).NewWriter(ctx)
 	writer.ContentType = fileHeader.Header.Get("Content-Type")
+	writer.CacheControl = "no-cache, max-age=0"
 	if _, err := io.Copy(writer, file); err != nil {
 		return "", fmt.Errorf("failed to upload file: %v", err)
 	}
@@ -39,6 +41,6 @@ func UploadImageToFirebase(file multipart.File, fileHeader *multipart.FileHeader
 		return "", fmt.Errorf("failed to make file public: %v", err)
 	}
 	fmt.Println("Publish file")
-	publicURL := fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucketName, objectPath)
+	publicURL := fmt.Sprintf("https://storage.googleapis.com/%s/%s?t=%d", bucketName, objectPath, time.Now().Unix())
 	return publicURL, nil
 }

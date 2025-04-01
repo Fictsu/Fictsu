@@ -4,8 +4,6 @@ services:
     container_name: fictsu-backend
     build:
       context: ./fictsu-backend
-    environment:
-      - SESSION_SECRET = your-secret-random-string
     depends_on:
       - fictsu-database
     hostname: fictsu-backend

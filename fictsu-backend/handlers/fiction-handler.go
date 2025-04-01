@@ -1,17 +1,19 @@
 package handlers
 
 import (
-	"time"
-	"strconv"
-	"net/http"
 	"database/sql"
-	"github.com/lib/pq"
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
+	"github.com/lib/pq"
 
+	configs "github.com/Fictsu/Fictsu/configs"
 	db "github.com/Fictsu/Fictsu/database"
 	models "github.com/Fictsu/Fictsu/models"
-	configs "github.com/Fictsu/Fictsu/configs"
 )
 
 func GetAllFictions(ctx *gin.Context) {
@@ -47,11 +49,13 @@ func GetAllFictions(ctx *gin.Context) {
 			&fiction.Synopsis,
 			&fiction.Created,
 		); err != nil {
+			fmt.Println("err is:", err)
 			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Error processing fictions"})
 			return
 		}
 
 		fictions = append(fictions, fiction)
+		fmt.Println(fictions)
 	}
 
 	ctx.IndentedJSON(http.StatusOK, fictions)
@@ -171,15 +175,15 @@ func CreateFiction(ctx *gin.Context, store *sessions.CookieStore) {
 
 	file, header, fileErr := ctx.Request.FormFile("cover")
 	if fileErr == nil {
-        coverPath := configs.CoverPath + strconv.Itoa(newFictionID)
-        URL, uploadErr := UploadImageToFirebase(file, header, coverPath, configs.BucketName)
-        if uploadErr == nil {
-            if _, updateErr := db.DB.Exec("UPDATE fictions SET cover = $1 WHERE id = $2", URL, newFictionID); updateErr != nil {
-                ctx.JSON(http.StatusBadRequest, gin.H{"Error": updateErr.Error()})
-                return
-            }
-        }
-    }
+		coverPath := configs.CoverPath + strconv.Itoa(newFictionID)
+		URL, uploadErr := UploadImageToFirebase(file, header, coverPath, configs.BucketName)
+		if uploadErr == nil {
+			if _, updateErr := db.DB.Exec("UPDATE fictions SET cover = $1 WHERE id = $2", URL, newFictionID); updateErr != nil {
+				ctx.JSON(http.StatusBadRequest, gin.H{"Error": updateErr.Error()})
+				return
+			}
+		}
+	}
 
 	fiction := models.FictionModel{}
 	fiction.ID = fictionCreateRequest.ID
@@ -243,8 +247,9 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	fictionUpdateRequest := models.FictionModel{}
-	if err := ctx.ShouldBindJSON(&fictionUpdateRequest); err != nil {
+	fictionUpdateRequest := models.FictionForm{}
+	if err := ctx.ShouldBind(&fictionUpdateRequest); err != nil {
+		fmt.Println("Err is : ", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid input data"})
 		return
 	}
@@ -252,11 +257,13 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	query := "UPDATE Fictions SET "
 	params := []interface{}{}
 	paramIndex := 1
-	if fictionUpdateRequest.Cover != "" {
-		query += "Cover = $" + strconv.Itoa(paramIndex) + ", "
-		params = append(params, fictionUpdateRequest.Cover)
-		paramIndex++
-	}
+	/*
+		if fictionUpdateRequest.Cover != "" {
+			query += "Cover = $" + strconv.Itoa(paramIndex) + ", "
+			params = append(params, fictionUpdateRequest.Cover)
+			paramIndex++
+		}
+	*/
 
 	if fictionUpdateRequest.Title != "" {
 		query += "Title = $" + strconv.Itoa(paramIndex) + ", "
@@ -293,15 +300,12 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		params = append(params, fictionUpdateRequest.Synopsis)
 		paramIndex++
 	}
-
 	if len(params) == 0 {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"Error": "No valid fields provided for update"})
 		return
 	}
-
-	query = query[:len(query) - 2] + " WHERE ID = $" + strconv.Itoa(paramIndex)
+	query = query[:len(query)-2] + " WHERE ID = $" + strconv.Itoa(paramIndex)
 	params = append(params, fictionID)
-
 	result, err := db.DB.Exec(query, params...)
 	if err != nil {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Failed to update fiction"})
@@ -313,7 +317,43 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		ctx.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Fiction not found"})
 		return
 	}
-
+	file, header, FileErr := ctx.Request.FormFile("cover")
+	if FileErr == nil {
+		fmt.Println("Have cover")
+		var coverPath string = configs.CoverPath + fictionID
+		url, upErr := UploadImageToFirebase(file, header, coverPath, configs.BucketName)
+		if upErr != nil {
+			fmt.Println(upErr)
+		} else {
+			fmt.Println(url)
+			result, updErr := db.DB.Exec(
+				`
+				UPDATE fictions
+				SET cover = $1
+				WHERE id = $2
+				`, url, fictionID)
+			if updErr != nil {
+				fmt.Println(updErr)
+				ctx.JSON(http.StatusBadRequest, gin.H{"Error ": updErr})
+				return
+			} else {
+				rowsAffected, err := result.RowsAffected()
+				if err != nil {
+					fmt.Println("Error checking rows affected:", err)
+					ctx.JSON(http.StatusCreated, fictionUpdateRequest)
+					return
+				}
+				if rowsAffected == 0 {
+					ctx.JSON(http.StatusCreated, fictionUpdateRequest)
+					return
+				}
+			}
+		}
+	} else {
+		fmt.Println("Err is: ", FileErr)
+		ctx.IndentedJSON(http.StatusOK, gin.H{"Message": "Fiction updated successfully"})
+		return
+	}
 	ctx.IndentedJSON(http.StatusOK, gin.H{"Message": "Fiction updated successfully"})
 }
 
@@ -437,7 +477,7 @@ func GetContributedFictions(user_ID int) ([]models.FictionModel, error) {
 		contriFictions = append(contriFictions, fiction)
 	}
 
-	return contriFictions, nil	
+	return contriFictions, nil
 }
 
 func GetFavFictions(user_ID int) ([]models.FictionModel, error) {
