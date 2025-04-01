@@ -27,7 +27,9 @@ export default function FictionCreatePage() {
             return
         }
 
+        setFiction(null)
         setLoading(true)
+
         try {
             const formData = new FormData()
             if (cover) {
