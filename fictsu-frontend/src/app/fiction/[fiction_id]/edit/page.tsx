@@ -16,6 +16,15 @@ import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
 const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((res) => res.json())
 
+function DataHandler(dataStr: any, DATA_TAG: any){
+    const formData = new FormData()
+    console.log(DATA_TAG.length)
+    for(let i=0; i< DATA_TAG.length; i++){
+        formData.append(DATA_TAG[i], dataStr[i])
+    }
+    return formData
+}
+
 export default function FictionEditPage({ params }: { params: Promise<{ fiction_id: string }> }) {
     const router = useRouter()
     const { fiction_id } = use(params)
@@ -23,6 +32,7 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
 
     const [loading, setLoading] = useState(false)
     const [cover, setCover] = useState("/default-cover.png")
+    const [coverFile, setCoverFile] = useState<File | null>(null)
 
     const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FictionForm>()
 
@@ -61,11 +71,14 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
 
     const onSubmit = async (formData: FictionForm) => {
         setLoading(true)
+        const DATA_TAG = ["cover", "title", "subtitle", "status", "synopsis", "author", "artist"]
+        var dataStr = [coverFile, formData.title, formData.subtitle, formData.status, formData.synopsis, formData.author, formData.artist]
+        const multiFormData = DataHandler(dataStr, DATA_TAG)
+        console.log(multiFormData)
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fiction_id}/u`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify(formData),
+            body: multiFormData,
         })
 
         setLoading(false)
@@ -79,7 +92,8 @@ export default function FictionEditPage({ params }: { params: Promise<{ fiction_
     }
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
+        const file = e.target.files?.[0] || null
+        setCoverFile(file)
         if (file) {
             const reader = new FileReader()
             reader.onloadend = () => {
