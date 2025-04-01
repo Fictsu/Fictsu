@@ -1,16 +1,18 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
+	"os"
+	"fmt"
+	"bytes"
+	"strconv"
 	"net/http"
-
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 
-	configs "github.com/Fictsu/Fictsu/configs"
+	db "github.com/Fictsu/Fictsu/database"
 	models "github.com/Fictsu/Fictsu/models"
+	configs "github.com/Fictsu/Fictsu/configs"
 )
 
 const (
@@ -28,7 +30,7 @@ const (
 
 func AddHeader(request *http.Request) {
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Authorization", "Bearer "+configs.OpenAIKey)
+	request.Header.Add("Authorization", "Bearer " + configs.OpenAIKey)
 	request.Header.Add("OpenAI-Organization", configs.OpenAIOrgID)
 	request.Header.Add("OpenAI-Project", configs.OpenAIProjID)
 }
@@ -48,7 +50,7 @@ func OpenAICreateStoryline(ctx *gin.Context) {
 		"model": "gpt-4o",
 		"messages": []map[string]string{
 			{
-				"role":    "user",
+				"role": "user",
 				"content": promptMessage,
 			},
 		},
@@ -103,7 +105,6 @@ func OpenAICreateStoryline(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, gin.H{"Received_Message": responseBody.Choices[0].Message.Content})
 }
 
-/*
 func OpenAICreateCharacter(ctx *gin.Context) {
 	requestBody := models.OpenAIRequestBodyTextToImage{}
 	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
@@ -115,10 +116,10 @@ func OpenAICreateCharacter(ctx *gin.Context) {
 	promptMessage := INTRO_CHAR + "'" + requestBody.Message + "'"
 
 	openAIRequest := map[string]interface{}{
-		"model":  "dall-e-3",
+		"model": "dall-e-3",
 		"prompt": promptMessage,
-		"n":      1,
-		"size":   requestBody.Size,
+		"n": 1,
+		"size": requestBody.Size,
 	}
 
 	// Convert request body to JSON
@@ -209,4 +210,3 @@ func DownloadImage(url, file_path string) error {
 	fmt.Println("Error copying file: ", err)
 	return err
 }
-*/
