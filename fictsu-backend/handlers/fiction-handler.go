@@ -49,11 +49,13 @@ func GetAllFictions(ctx *gin.Context) {
 			&fiction.Synopsis,
 			&fiction.Created,
 		); err != nil {
+			fmt.Println("err is:", err)
 			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Error processing fictions"})
 			return
 		}
 
 		fictions = append(fictions, fiction)
+		fmt.Println(fictions)
 	}
 
 	ctx.IndentedJSON(http.StatusOK, fictions)
@@ -274,8 +276,8 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 		return
 	}
 
-	fictionUpdateRequest := models.FictionModel{}
-	if err := ctx.ShouldBindJSON(&fictionUpdateRequest); err != nil {
+	fictionUpdateRequest := models.FictionForm{}
+	if err := ctx.ShouldBind(&fictionUpdateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid input data"})
 		return
 	}
