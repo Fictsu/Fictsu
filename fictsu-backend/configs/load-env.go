@@ -22,6 +22,9 @@ var (
 
 	CoverPath  string
 	BucketName string
+
+	CharImagePath 		string
+	BGImagePath  		string
 )
 
 func LoadEnv() {
@@ -45,10 +48,14 @@ func LoadEnv() {
 	CoverPath = os.Getenv("COVER_PATH")
 	BucketName = os.Getenv("BUCKET_NAME")
 
+	CharImagePath 		= os.Getenv("CHAR_IMG_PATH")
+	BGImagePath 		= os.Getenv("BG_IMG_PATH")
+
 	// Fail fast if any required environment variable is missing
 	if OpenAIKey == "" || OpenAIOrgID == "" || OpenAIProjID == "" ||
 		ClientID == "" || ClientSecret == "" || ClientCallbackURL == "" ||
-		SessionKey == "" || FrontEndURL == "" || CoverPath == "" || BucketName == "" {
+		SessionKey == "" || FrontEndURL == "" || CoverPath == "" || BucketName == "" || 
+		CharImagePath == "" || BGImagePath == "" {
 		log.Fatal("Missing one or more required environment variables")
 	}
 }
