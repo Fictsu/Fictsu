@@ -7,8 +7,10 @@ import (
 type Status string
 
 const (
-	Completed Status = "Completed"
-	Ongoing   Status = "Ongoing"
+	Completed 	Status = "Completed"
+	Ongoing   	Status = "Ongoing"
+	Hiatus		Status = "Hiatus"
+	Dropped		Status = "Dropped"
 )
 
 type FictionForm struct {
