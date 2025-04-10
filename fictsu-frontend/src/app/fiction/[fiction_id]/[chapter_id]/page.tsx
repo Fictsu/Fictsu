@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import { Fiction, Chapter } from "@/types/types"
 
@@ -20,7 +21,6 @@ async function getFiction(fictionID: string): Promise<Fiction | null> {
     try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}`, {
             cache: "no-store",
-            credentials: "include",
         })
 
         if (!res.ok) {
@@ -68,7 +68,7 @@ export default async function ChapterPage({ params }: { params: { fiction_id: st
 
             <div
                 className="formatted-content mt-6 text-lg leading-loose text-gray-100 space-y-6"
-                dangerouslySetInnerHTML={{ __html: chapter.content }}
+                dangerouslySetInnerHTML={{ __html: formatChapterContent(chapter.content) }}
             />
 
             <div className="mt-12 flex justify-between items-center border-t pt-6">
@@ -102,5 +102,29 @@ export default async function ChapterPage({ params }: { params: { fiction_id: st
                 )}
             </div>
         </div>
+    )
+}
+
+function formatChapterContent(content: string): string {
+    return content.replace(
+        /(https:\/\/storage\.googleapis\.com\/[^\s"<>'()]+)/g,
+        (URL) => {
+            const cleanURL = URL.split('?')[0]
+            if (cleanURL.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                return `
+                    <div class="my-6 flex justify-center">
+                        <img 
+                            src="${URL}" 
+                            alt="Chapter image"
+                            class="max-w-[80%] border border-gray-500 shadow-md transition-transform hover:scale-105 duration-300"
+                            loading="lazy"
+                            style="height: auto;"
+                        />
+                    </div>
+                `
+            }
+
+            return `<a href="${URL}" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline break-words">${URL}</a>`
+        }
     )
 }
