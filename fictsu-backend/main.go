@@ -78,6 +78,7 @@ func main() {
 	API.POST("/f/:fictionID/fav", func(ctx *gin.Context) {
 		handlers.AddFavoriteFiction(ctx, store)
 	})
+	API.POST("f/images/upload", handlers.UploadChapterImage)
 
 	// PUT
 	API.PUT("/f/:fictionID/u", func(ctx *gin.Context) {
