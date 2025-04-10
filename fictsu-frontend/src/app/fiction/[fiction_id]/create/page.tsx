@@ -4,14 +4,14 @@ import useSWR from "swr"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { ChapterForm } from "@/types/types"
-import { useState, useEffect } from "react"
 import "react-quill-new/dist/quill.snow.css"
+import { useState, useEffect, useRef } from "react"
 import { useForm, Controller } from "react-hook-form"
 import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
-const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then(res => res.json())
+const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((res) => res.json())
 
 export default function ChapterCreatePage({ params }: { params: Promise<{ fiction_id: string }> }) {
     const router = useRouter()
@@ -26,8 +26,19 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
         params.then(({ fiction_id }) => setFictionID(fiction_id))
     }, [params])
 
-    const { data: userData, error: userError } = useSWR(fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/user` : null, fetcher)
-    const { data: fictionData, error: fictionError } = useSWR(fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}` : null, fetcher)
+    const { data: userData, error: userError } = useSWR(
+        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/user` : null,
+        fetcher
+    )
+    const { data: fictionData, error: fictionError } = useSWR(
+        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}` : null,
+        fetcher
+    )
+
+    const redirectWithMessage = (message: string, path: string) => {
+        setErrorMessage(message)
+        setTimeout(() => router.push(path), 2500)
+    }
 
     useEffect(() => {
         if (!fictionID) {
@@ -35,8 +46,7 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
         }
 
         if (userError || fictionError) {
-            setErrorMessage("Failed to load data. Redirecting...")
-            setTimeout(() => router.push("/user"), 2500)
+            redirectWithMessage("Failed to load data. Redirecting...", "/user")
             return
         }
 
@@ -47,14 +57,13 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
         const userID = userData.User_Profile?.id
         const contributorID = fictionData.Fiction.contributor_id
         if (!userID) {
-            setErrorMessage("You must be logged in. Redirecting...")
-            setTimeout(() => router.push("/"), 2500)
+            redirectWithMessage("You must be logged in. Redirecting...", "/")
             return
         }
 
         if (userID !== contributorID) {
-            setErrorMessage("You are not the contributor. Redirecting...")
-            setTimeout(() => router.push("/"), 2500)
+            redirectWithMessage("You are not the contributor. Redirecting...", "/")
+            return
         }
     }, [fictionID, userData, fictionData, userError, fictionError, router])
 
@@ -73,7 +82,7 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
                 credentials: "include",
                 body: JSON.stringify(formData),
             })
-    
+
             if (!response.ok) {
                 throw new Error("Failed to create chapter.")
             }
@@ -82,7 +91,6 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
             alert("Chapter created successfully!")
             router.push(`/fiction/${fictionID}/${newChapter.id}`)
         } catch (error) {
-            // Check if error is an instance of Error, otherwise use a fallback message
             if (error instanceof Error) {
                 setErrorMessage(error.message)
             } else {
@@ -91,7 +99,7 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
         } finally {
             setLoading(false)
         }
-    }    
+    }
 
     if (!fictionID || !userData || !fictionData) {
         return (
@@ -133,13 +141,13 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
                             control={control}
                             rules={{
                                 required: "Content is required",
-                                validate: value => value.replace(/<[^>]+>/g, "").trim().length > 0 || "Content is required"
+                                validate: value => value?.replace(/<[^>]+>/g, "").trim().length > 0 || "Content is required"
                             }}
                             render={({ field }) => (
-                                <ReactQuill 
-                                    {...field} 
-                                    theme="snow" 
-                                    onChange={value => field.onChange(value.trim() ? value : "")} 
+                                <ReactQuill
+                                    {...field}
+                                    theme="snow"
+                                    onChange={(value: string) => field.onChange(value.trim() ? value : "")}
                                     placeholder="Write your content here..."
                                 />
                             )}

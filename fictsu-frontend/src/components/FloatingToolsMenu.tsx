@@ -5,6 +5,7 @@ import { Menu, X, Bot, ImagePlus, ImageUp, ArrowUp } from "lucide-react"
 
 export default function FloatingToolsMenu() {
     const pathname = usePathname()
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const chatContainerRef = useRef<HTMLDivElement>(null)
 
     const [loading, setLoading] = useState(false)
@@ -14,15 +15,16 @@ export default function FloatingToolsMenu() {
     const [activeTool, setActiveTool] = useState<"menu" | "AI" | null>(null)
     const [messages, setMessages] = useState<{ text: string; sender: "user" | "AI" }[]>([])
 
-    // Fetch user ID from backend
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, { credentials: "include" })
-                if (!res.ok) throw new Error("Failed to fetch user")
+                if (!res.ok) {
+                    throw new Error("Failed to fetch user")
+                }
 
                 const data = await res.json()
-                setUserID(data.User_Profile.id) // Assuming backend sends { id: "user123" }
+                setUserID(data.User_Profile.id)
             } catch (error) {
                 console.error(error)
             }
@@ -30,7 +32,6 @@ export default function FloatingToolsMenu() {
         fetchUser()
     }, [])
 
-    // Load chat history when userId is set
     useEffect(() => {
         if (userID) {
             const savedMessages = localStorage.getItem(`chat_history_${userID}`)
@@ -40,15 +41,62 @@ export default function FloatingToolsMenu() {
         }
     }, [userID])
 
-    // Save chat history when messages update
     useEffect(() => {
         if (userID) {
             localStorage.setItem(`chat_history_${userID}`, JSON.stringify(messages))
         }
     }, [messages, userID])
 
+    useEffect(() => {
+        const handleEnter = (e: KeyboardEvent) => {
+            if (activeTool === "AI" && e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                fetchAIResponse()
+            }
+        }
+        document.addEventListener("keydown", handleEnter)
+        return () => document.removeEventListener("keydown", handleEnter)
+    }, [activeTool, inputPrompt])
+
     const toggleTool = (tool: "menu" | "AI") => {
         setActiveTool((prev) => (prev === tool ? null : tool))
+    }
+
+    const handleImageUploadClick = () => {
+        fileInputRef.current?.click()
+    }
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) {
+            return
+        }
+
+        const formData = new FormData()
+        formData.append("image", file)
+
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/images/upload`, {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+            })
+
+            const data = await res.json()
+            if (!res.ok) {
+                alert(`Upload failed: ${data.Error}`)
+                return
+            }
+
+            const imageURL = data.image_URL
+
+            const markdown = imageURL
+            await navigator.clipboard.writeText(markdown)
+            alert("Image uploaded! Markdown copied:\n" + markdown)
+        } catch (err) {
+            console.error(err)
+            alert("Image upload failed.")
+        }
     }
 
     const fetchAIResponse = async () => {
@@ -59,7 +107,7 @@ export default function FloatingToolsMenu() {
         setIsSending(true)
         setLoading(true)
 
-        setMessages((prevMessages) => [...prevMessages, { text: inputPrompt, sender: "user" }])
+        setMessages((prev) => [...prev, { text: inputPrompt, sender: "user" }])
         setInputPrompt("")
 
         try {
@@ -73,15 +121,14 @@ export default function FloatingToolsMenu() {
             const data = await response.json()
             const AIResponse = response.ok ? data.Received_Message : `Error: ${data.Error}`
 
-            setMessages((prevMessages) => [...prevMessages, { text: AIResponse, sender: "AI" }])
+            const parsedMessage = await parseMarkdown(AIResponse)
+            setMessages((prev) => [...prev, { text: parsedMessage, sender: "AI" }])
         } catch (error) {
             console.error("Error:", error)
-            setMessages((prevMessages) => [...prevMessages, { text: "Failed to fetch AI response.", sender: "AI" }])
+            setMessages((prev) => [...prev, { text: "Failed to fetch AI response.", sender: "AI" }])
         }
 
         setLoading(false)
-
-        // Scroll to the bottom after response is added
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
         }
@@ -89,7 +136,7 @@ export default function FloatingToolsMenu() {
         setIsSending(false)
     }
 
-    const parseMarkdown = (markdownText: string) => {
+    const parseMarkdown = async (markdownText: string): Promise<string> => {
         return marked(markdownText)
     }
 
@@ -97,6 +144,14 @@ export default function FloatingToolsMenu() {
 
     return (
         <div className="fixed bottom-4 right-4 flex flex-col items-end z-50">
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleUpload}
+            />
+
             <div className="relative">
                 {activeTool === "menu" && (
                     <div className="absolute bottom-16 right-0 bg-white shadow-xl rounded-lg p-2 w-52 space-y-1 border text-black animate-fade-in">
@@ -104,7 +159,7 @@ export default function FloatingToolsMenu() {
                         <MenuButton icon={<Bot size={20} />} label="AI Chat" onClick={() => toggleTool("AI")} />
 
                         {!isEditOrCreateFictionPage && (
-                            <MenuButton icon={<ImageUp size={20} />} label="Upload Image" onClick={() => console.log("Upload Image")} />
+                            <MenuButton icon={<ImageUp size={20} />} label="Upload Image" onClick={handleImageUploadClick} />
                         )}
 
                         <MenuButton icon={<ImagePlus size={20} />} label="Generate Image" onClick={() => console.log("Generate Image")} />
@@ -144,18 +199,20 @@ export default function FloatingToolsMenu() {
                         </button>
                     </div>
 
-                    {/* Chat Messages Container */}
                     <div ref={chatContainerRef} className="flex-1 overflow-auto mt-4 p-2 space-y-4">
                         {messages.map((message, index) => (
-                            <div key={index} className={`flex ${message.sender === "user" ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`p-3 rounded-lg max-w-[70%] break-words ${message.sender === "user" ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}
-                                    dangerouslySetInnerHTML={{ __html: parseMarkdown(message.text) }} />
+                            <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                                <div
+                                    className={`p-3 rounded-lg max-w-[70%] break-words ${
+                                        message.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black"
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: message.text }}
+                                />
                             </div>
                         ))}
                         {loading && <div className="flex justify-center items-center"><span className="text-blue-500">Loading...</span></div>}
                     </div>
 
-                    {/* Text Input Area */}
                     <div className="relative mt-4">
                         <textarea
                             className="w-full p-3 border rounded resize-none focus:outline-blue-500 min-h-[60px] bg-gray-100 pr-12"
