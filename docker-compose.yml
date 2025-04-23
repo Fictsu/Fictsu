@@ -1,4 +1,16 @@
 services:
+  fictsu-frontend:
+    image: kwangsensei/fictsu-frontend:latest
+    container_name: fictsu-frontend
+    build:
+      context: ./fictsu-frontend
+    depends_on:
+      - fictsu-backend
+    networks:
+      - mynet
+    ports:
+      - 3000:3000
+
   fictsu-backend:
     image: kwangsensei/fictsu-backend:latest
     container_name: fictsu-backend
