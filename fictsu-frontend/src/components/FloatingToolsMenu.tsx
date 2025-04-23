@@ -1,9 +1,9 @@
 import { marked } from "marked"
 import { usePathname } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Menu, X, Bot, ImagePlus, ImageUp, ArrowUp } from "lucide-react"
 
-export default function FloatingToolsMenu() {
+export default function FloatingToolsMenu({ onImageInsert }: { onImageInsert?: (url: string) => void }) {
     const pathname = usePathname()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -14,6 +14,91 @@ export default function FloatingToolsMenu() {
     const [userID, setUserID] = useState<string | null>(null)
     const [activeTool, setActiveTool] = useState<"menu" | "AI" | null>(null)
     const [messages, setMessages] = useState<{ text: string; sender: "user" | "AI" }[]>([])
+
+    const isEditOrCreateFictionPage = /^\/f\/[^/]+\/edit$/.test(pathname) || pathname === "/f/create"
+
+    const handleImageUploadClick = () => {
+        fileInputRef.current?.click()
+    }
+
+    const toggleTool = (tool: "menu" | "AI") => {
+        setActiveTool((prev) => (prev === tool ? null : tool))
+    }
+
+    const parseMarkdown = async (markdownText: string): Promise<string> => {
+        return marked(markdownText)
+    }
+
+    const fetchAIResponse = useCallback(async () => {
+        if (!inputPrompt.trim()) {
+            return
+        }
+
+        setIsSending(true)
+        setLoading(true)
+
+        setMessages((prev) => [...prev, { text: inputPrompt, sender: "user" }])
+        setInputPrompt("")
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/ai/storyline/c`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ Message: inputPrompt }),
+            })
+
+            const data = await response.json()
+            const AIResponse = response.ok ? data.Received_Message : `Error: ${data.Error}`
+
+            const parsedMessage = await parseMarkdown(AIResponse)
+            setMessages((prev) => [...prev, { text: parsedMessage, sender: "AI" }])
+        } catch (error) {
+            console.error("Error:", error)
+            setMessages((prev) => [...prev, { text: "Failed to fetch AI response.", sender: "AI" }])
+        }
+
+        setLoading(false)
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+        }
+
+        setIsSending(false)
+    }, [inputPrompt])
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) {
+            return
+        }
+
+        const formData = new FormData()
+        formData.append("image", file)
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/images/upload`, {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+            })
+
+            const data = await res.json()
+            if (!res.ok) {
+                alert(`Upload failed: ${data.Error}`)
+                return
+            }
+
+            const imageURL = data.image_URL
+            if (onImageInsert) {
+                onImageInsert(imageURL)
+                alert("Image uploaded and inserted!")
+            } else {
+                await navigator.clipboard.writeText(imageURL)
+                alert("Image uploaded! URL copied:\n" + imageURL)
+            }            
+        } catch (err) {
+            console.error(err)
+            alert("Image upload failed.")
+        }
+    }
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -56,99 +141,15 @@ export default function FloatingToolsMenu() {
         }
         document.addEventListener("keydown", handleEnter)
         return () => document.removeEventListener("keydown", handleEnter)
-    }, [activeTool, inputPrompt])
-
-    const toggleTool = (tool: "menu" | "AI") => {
-        setActiveTool((prev) => (prev === tool ? null : tool))
-    }
-
-    const handleImageUploadClick = () => {
-        fileInputRef.current?.click()
-    }
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) {
-            return
-        }
-
-        const formData = new FormData()
-        formData.append("image", file)
-
-        try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/images/upload`, {
-                method: "POST",
-                body: formData,
-                credentials: "include",
-            })
-
-            const data = await res.json()
-            if (!res.ok) {
-                alert(`Upload failed: ${data.Error}`)
-                return
-            }
-
-            const imageURL = data.image_URL
-
-            const markdown = imageURL
-            await navigator.clipboard.writeText(markdown)
-            alert("Image uploaded! Markdown copied:\n" + markdown)
-        } catch (err) {
-            console.error(err)
-            alert("Image upload failed.")
-        }
-    }
-
-    const fetchAIResponse = async () => {
-        if (!inputPrompt.trim()) {
-            return
-        }
-
-        setIsSending(true)
-        setLoading(true)
-
-        setMessages((prev) => [...prev, { text: inputPrompt, sender: "user" }])
-        setInputPrompt("")
-
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/ai/storyline/c`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ Message: inputPrompt }),
-            })
-
-            const data = await response.json()
-            const AIResponse = response.ok ? data.Received_Message : `Error: ${data.Error}`
-
-            const parsedMessage = await parseMarkdown(AIResponse)
-            setMessages((prev) => [...prev, { text: parsedMessage, sender: "AI" }])
-        } catch (error) {
-            console.error("Error:", error)
-            setMessages((prev) => [...prev, { text: "Failed to fetch AI response.", sender: "AI" }])
-        }
-
-        setLoading(false)
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-        }
-
-        setIsSending(false)
-    }
-
-    const parseMarkdown = async (markdownText: string): Promise<string> => {
-        return marked(markdownText)
-    }
-
-    const isEditOrCreateFictionPage = /^\/f\/[^/]+\/edit$/.test(pathname) || pathname === "/f/create"
+    }, [activeTool, fetchAIResponse])
 
     return (
         <div className="fixed bottom-4 right-4 flex flex-col items-end z-50">
             <input
                 type="file"
-                ref={fileInputRef}
                 accept="image/*"
                 className="hidden"
+                ref={fileInputRef}
                 onChange={handleUpload}
             />
 
@@ -156,6 +157,7 @@ export default function FloatingToolsMenu() {
                 {activeTool === "menu" && (
                     <div className="absolute bottom-16 right-0 bg-white shadow-xl rounded-lg p-2 w-52 space-y-1 border text-black animate-fade-in">
                         <h2 className="text-lg font-semibold p-2">Tools</h2>
+
                         <MenuButton icon={<Bot size={20} />} label="AI Chat" onClick={() => toggleTool("AI")} />
 
                         {!isEditOrCreateFictionPage && (
@@ -194,6 +196,7 @@ export default function FloatingToolsMenu() {
                 >
                     <div className="flex justify-between items-center">
                         <h2 className="text-lg font-semibold">AI Assistant</h2>
+
                         <button onClick={() => toggleTool("AI")} className="text-gray-600 hover:text-gray-800">
                             <X size={20} />
                         </button>
@@ -210,20 +213,25 @@ export default function FloatingToolsMenu() {
                                 />
                             </div>
                         ))}
-                        {loading && <div className="flex justify-center items-center"><span className="text-blue-500">Loading...</span></div>}
+
+                        {loading &&
+                            <div className="flex justify-center items-center">
+                                <span className="text-blue-500">Loading...</span>
+                            </div>
+                        }
                     </div>
 
                     <div className="relative mt-4">
                         <textarea
-                            className="w-full p-3 border rounded resize-none focus:outline-blue-500 min-h-[60px] bg-gray-100 pr-12"
-                            placeholder="Type your message..."
                             value={inputPrompt}
+                            placeholder="Type your message..."
                             onChange={(e) => setInputPrompt(e.target.value)}
+                            className="w-full p-3 border rounded resize-none focus:outline-blue-500 min-h-[60px] bg-gray-100 pr-12"
                         />
                         <button
-                            className={`absolute bottom-5.5 right-4.5 w-10 h-10 flex items-center justify-center ${inputPrompt.trim() && !isSending ? 'bg-blue-500' : 'bg-gray-300'} text-white rounded-full transition-all`}
                             onClick={fetchAIResponse}
                             disabled={!inputPrompt.trim() || isSending}
+                            className={`absolute bottom-5.5 right-4.5 w-10 h-10 flex items-center justify-center ${inputPrompt.trim() && !isSending ? 'bg-blue-500' : 'bg-gray-300'} text-white rounded-full transition-all`}
                         >
                             {isSending ? <span className="animate-spin"><ArrowUp size={20} /></span> : <ArrowUp size={20} />}
                         </button>
