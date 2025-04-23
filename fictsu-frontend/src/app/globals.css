@@ -58,3 +58,11 @@ body {
 .formatted-content ul li {
   margin-bottom: 0.5rem;  /* Adds space between list items */
 }
+
+.ql-editor img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+  max-height: 600px;
+}
