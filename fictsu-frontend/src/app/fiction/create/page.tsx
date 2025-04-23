@@ -22,6 +22,14 @@ export default function FictionCreatePage() {
 
     const { register, handleSubmit, control, formState: { errors } } = useForm<FictionForm>()
 
+    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null
+        if (file) {
+            setCover(file)
+            setPreviewURL(URL.createObjectURL(file))
+        }
+    }
+
     const onSubmit = async (data: FictionForm) => {
         if (loading || isCreated) {
             return
@@ -29,7 +37,6 @@ export default function FictionCreatePage() {
 
         setFiction(null)
         setLoading(true)
-
         try {
             const formData = new FormData()
             if (cover) {
@@ -37,7 +44,6 @@ export default function FictionCreatePage() {
             }
 
             Object.entries(data).forEach(([key, value]) => formData.append(key, value))
-
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/c`, {
                 method: "POST",
                 body: formData,
@@ -58,14 +64,6 @@ export default function FictionCreatePage() {
         }
     }
 
-    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null
-        if (file) {
-            setCover(file)
-            setPreviewURL(URL.createObjectURL(file))
-        }
-    }
-
     return (
         <div className="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-10 mb-10 border border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Create Fiction</h1>
@@ -81,10 +79,12 @@ export default function FictionCreatePage() {
                             className="rounded-lg object-cover"
                             unoptimized
                         />
+
                         {/* Hover overlay */}
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end justify-center opacity-0 group-hover:opacity-35 transition-opacity pb-34 rounded-lg">
                             <span className="text-white text-sm font-semibold">Upload Cover Image</span>
                         </div>
+
                         {/* Hidden File Input */}
                         <input
                             type="file"
@@ -93,6 +93,7 @@ export default function FictionCreatePage() {
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                     </div>
+
                     <div className="flex-1 space-y-4">
                         <div className="space-y-1">
                             <input
@@ -140,6 +141,7 @@ export default function FictionCreatePage() {
                     <label className={`block font-medium ${errors.synopsis ? "text-red-500" : "text-gray-700"}`}>
                         {errors.synopsis ? errors.synopsis.message : "Synopsis"}
                     </label>
+
                     <div className={`border rounded-lg p-2 ${errors.synopsis ? "border-red-500" : "border-gray-300"} text-gray-900`}>
                         <Controller
                             name="synopsis"
@@ -186,6 +188,7 @@ export default function FictionCreatePage() {
                         Go to Fiction
                     </button>
                 )}
+
                 {fiction && (
                     <button
                         onClick={() => router.push(`/f/${fiction.id}/ch/create`)}
