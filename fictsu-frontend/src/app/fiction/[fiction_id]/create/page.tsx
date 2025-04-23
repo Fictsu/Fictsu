@@ -9,38 +9,68 @@ import { useState, useEffect, useRef } from "react"
 import { useForm, Controller } from "react-hook-form"
 import FloatingToolsMenu from "@/components/FloatingToolsMenu"
 
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
+const CustomQuill = dynamic(() => import("@/components/CustomQuillChapterCreate"), { ssr: false })
 const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((res) => res.json())
 
 export default function ChapterCreatePage({ params }: { params: Promise<{ fiction_id: string }> }) {
     const router = useRouter()
+    const quillRef = useRef<{ insertImage: (URL: string) => void }>(null)
 
     const [loading, setLoading] = useState(false)
     const [fictionID, setFictionID] = useState<string | null>(null)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     const { register, handleSubmit, control, formState: { errors } } = useForm<ChapterForm>()
+    const { data: userData, error: userError } = useSWR(
+        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/user` : null, fetcher
+    )
+    const { data: fictionData, error: fictionError } = useSWR(
+        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}` : null, fetcher
+    )
+
+    const onSubmit = async (formData: ChapterForm) => {
+        if (!fictionID) {
+            return
+        }
+
+        setLoading(true)
+        setErrorMessage(null)
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/c`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(formData),
+            })
+
+            if (!response.ok) {
+                throw new Error("Failed to create chapter.")
+            }
+
+            const newChapter = await response.json()
+            alert("Chapter created successfully!")
+            router.push(`/fiction/${fictionID}/${newChapter.id}`)
+        } catch (error) {
+            if (error instanceof Error) {
+                setErrorMessage(error.message)
+            } else {
+                setErrorMessage("An unknown error occurred.")
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
 
     useEffect(() => {
         params.then(({ fiction_id }) => setFictionID(fiction_id))
     }, [params])
 
-    const { data: userData, error: userError } = useSWR(
-        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/user` : null,
-        fetcher
-    )
-    const { data: fictionData, error: fictionError } = useSWR(
-        fictionID ? `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}` : null,
-        fetcher
-    )
-
-    const redirectWithMessage = (message: string, path: string) => {
-        setErrorMessage(message)
-        setTimeout(() => router.push(path), 2500)
-    }
-
     useEffect(() => {
+        const redirectWithMessage = (message: string, path: string) => {
+            setErrorMessage(message)
+            setTimeout(() => router.push(path), 2500)
+        }
+
         if (!fictionID) {
             return
         }
@@ -67,40 +97,6 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
         }
     }, [fictionID, userData, fictionData, userError, fictionError, router])
 
-    const onSubmit = async (formData: ChapterForm) => {
-        if (!fictionID) {
-            return
-        }
-
-        setLoading(true)
-        setErrorMessage(null)
-    
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/c`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(formData),
-            })
-
-            if (!response.ok) {
-                throw new Error("Failed to create chapter.")
-            }
-    
-            const newChapter = await response.json()
-            alert("Chapter created successfully!")
-            router.push(`/fiction/${fictionID}/${newChapter.id}`)
-        } catch (error) {
-            if (error instanceof Error) {
-                setErrorMessage(error.message)
-            } else {
-                setErrorMessage("An unknown error occurred.")
-            }
-        } finally {
-            setLoading(false)
-        }
-    }
-
     if (!fictionID || !userData || !fictionData) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
@@ -124,6 +120,7 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
                     <label className={`block font-medium ${errors.title ? "text-red-500" : "text-gray-700"}`}>
                         {errors.title ? errors.title.message : "Title"}
                     </label>
+
                     <input
                         {...register("title", { required: "Title is required" })}
                         placeholder={errors.title ? errors.title.message : "Title"}
@@ -135,20 +132,24 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
                     <label className={`block font-medium ${errors.content ? "text-red-500" : "text-gray-700"}`}>
                         {errors.content ? errors.content.message : "Content"}
                     </label>
+
                     <div className={`border rounded-lg p-2 ${errors.content ? "border-red-500" : "border-gray-300"} text-gray-900`}>
                         <Controller
                             name="content"
                             control={control}
                             rules={{
                                 required: "Content is required",
-                                validate: value => value?.replace(/<[^>]+>/g, "").trim().length > 0 || "Content is required"
+                                validate: (value) => {
+                                    const hasText = value?.replace(/<[^>]+>/g, "").trim().length > 0
+                                    const hasImage = /<img\s+[^>]*src=/.test(value)
+                                    return hasText || hasImage || "Content is required"
+                                }
                             }}
                             render={({ field }) => (
-                                <ReactQuill
-                                    {...field}
-                                    theme="snow"
-                                    onChange={(value: string) => field.onChange(value.trim() ? value : "")}
-                                    placeholder="Write your content here..."
+                                <CustomQuill
+                                    ref={quillRef}
+                                    value={field.value}
+                                    onChange={(value: string) => field.onChange(value)}
                                 />
                             )}
                         />
@@ -166,7 +167,7 @@ export default function ChapterCreatePage({ params }: { params: Promise<{ fictio
                 </button>
             </form>
 
-            <FloatingToolsMenu />
+            <FloatingToolsMenu onImageInsert={(URL) => quillRef.current?.insertImage(URL)} />
         </div>
     )
 }
