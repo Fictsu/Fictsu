@@ -3,7 +3,7 @@ import Image from "next/image"
 import { Fiction } from "@/types/types"
 
 async function getFictions(): Promise<Fiction[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API}/f`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_SERVER}/f`, {
     cache: "no-store",
   })
 
