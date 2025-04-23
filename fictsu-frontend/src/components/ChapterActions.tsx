@@ -3,6 +3,13 @@ import { useState } from "react"
 import { User } from "@/types/types"
 import { motion } from "framer-motion"
 
+interface ChapterActionsProps {
+    fictionID:      number
+    chapterID:      number
+    contributorID:  number
+    mutate:         () => void
+}
+
 const fetcher = async (URL: string) => {
     const res = await fetch(URL, { credentials: "include" })
     if (!res.ok) {
@@ -12,23 +19,17 @@ const fetcher = async (URL: string) => {
     return res.json()
 }
 
-interface ChapterActionsProps {
-    fictionID:      number
-    chapterID:      number
-    contributorID:  number
-}
-
-export default function ChapterActions({ fictionID, chapterID, contributorID }: ChapterActionsProps) {
+export default function ChapterActions({ fictionID, chapterID, contributorID, mutate }: ChapterActionsProps) {
     const [loading, setLoading] = useState(false)
     const { data } = useSWR(`${process.env.NEXT_PUBLIC_BACKEND_API}/user`, fetcher)
 
     const user: User | null = data?.User_Profile || null
-    if (!user || user.id !== contributorID) {
+    const isContributor = user?.id === contributorID
+    if (!isContributor) {
         return null
     }
 
     const handleEdit = () => {
-        // Open the edit page in a new tab
         window.open(`/f/${fictionID}/${chapterID}/edit`, "_blank")
     }
 
@@ -49,7 +50,7 @@ export default function ChapterActions({ fictionID, chapterID, contributorID }: 
             }
 
             alert("Chapter deleted successfully")
-            window.location.reload()
+            mutate()
         } catch (error) {
             console.error("Error deleting chapter:", error)
             alert("An error occurred while deleting the chapter.")
