@@ -104,5 +104,5 @@ func main() {
 	AI.POST("/storyline/c", handlers.OpenAICreateStoryline)
 	// AI.POST("/char/c", handlers.OpenAICreateCharacter)
 
-	router.Run()
+	router.Run(":8080")
 }
