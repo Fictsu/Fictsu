@@ -4,11 +4,11 @@ import useSWR from "swr"
 import { useState } from "react"
 import { Heart, HeartOff } from "lucide-react"
 
-const fetcher = (url: string) =>
-    fetch(url, { credentials: "include" })
+const fetcher = (URL: string) =>
+    fetch(URL, { credentials: "include" })
         .then((res) => {
             if (res.status === 401) {
-                return { is_favorited: false, is_logged_in: false } // Handle not logged in
+                return { is_favorited: false, is_logged_in: false }
             }
 
             if (!res.ok) {
@@ -18,12 +18,15 @@ const fetcher = (url: string) =>
         })
 
 export default function FavoriteButton({ fictionID }: { fictionID: number }) {
-    const { data, error, mutate } = useSWR(
-        `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/fav/status`,
-        fetcher
-    )
-
     const [loading, setLoading] = useState(false)
+
+    const { data, error, mutate } = useSWR(
+        `${process.env.NEXT_PUBLIC_BACKEND_API}/f/${fictionID}/fav/status`, fetcher
+    )
+    
+    if (error) {
+        return null
+    }
 
     async function toggleFavorite() {
         if (!data) {
@@ -62,17 +65,19 @@ export default function FavoriteButton({ fictionID }: { fictionID: number }) {
         }
     }
 
-    if (error) {
-        return null
-    }
-
     return (
         <button
             disabled={loading}
             onClick={toggleFavorite}
             className={`p-2 rounded-lg transition ${
-                data?.is_favorited ? "text-red-500 hover:text-red-700" : "text-gray-500 hover:text-gray-700"
-            } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                data?.is_favorited
+                ? "text-red-500 hover:text-red-700"
+                : "text-gray-500 hover:text-gray-700"} ${
+                    loading
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`
+            }
             aria-label={data?.is_favorited ? "Remove from favorites" : "Add to favorites"}
         >
             {data?.is_favorited ? <Heart className="w-10 h-10 fill-current" /> : <HeartOff className="w-10 h-10" />}
