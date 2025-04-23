@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import Link from "next/link"
 import Image from "next/image"
+import React, { Suspense } from "react"
 import { useState, useEffect } from "react"
 import { User, Fiction } from "@/types/types"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -10,6 +11,14 @@ import { useRouter, useSearchParams } from "next/navigation"
 const fetcher = (URL: string) => fetch(URL, { credentials: "include" }).then((res) => res.json())
 
 export default function UserProfilePage() {
+    return (
+        <Suspense fallback={<p className="text-center mt-10 text-lg">Loading...</p>}>
+            <UserProfile />
+        </Suspense>
+    )
+}
+
+function UserProfile() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -45,6 +54,7 @@ export default function UserProfilePage() {
                     className="w-20 h-20 rounded-full border-2 border-blue-500"
                     referrerPolicy="no-referrer"
                 />
+
                 <div>
                     <h1 className="text-xl font-semibold text-gray-800">{user.name}</h1>
                     <p className="text-sm text-gray-600">{user.email}</p>
@@ -64,6 +74,7 @@ export default function UserProfilePage() {
                         Favorites
                     </button>
                 </Link>
+
                 <Link href="/user?tab=contributions">
                     <button
                         onClick={() => setActiveTab("contributions")}
@@ -105,14 +116,6 @@ function FictionList({ fictions, emptyMessage, allowEdit, mutate, showCreated }:
 
     const [fictionList, setFictionList] = useState<Fiction[]>(fictions || [])
 
-    useEffect(() => {
-        setFictionList(fictions || [])
-    }, [fictions])
-
-    if (!fictionList || fictionList.length === 0) {
-        return <p className="text-center text-gray-500">{emptyMessage}</p>
-    }
-
     const handleEdit = (fiction_id: number) => {
         window.location.href = `/f/${fiction_id}/edit`
     }
@@ -143,6 +146,14 @@ function FictionList({ fictions, emptyMessage, allowEdit, mutate, showCreated }:
         }
     }
 
+    useEffect(() => {
+        setFictionList(fictions || [])
+    }, [fictions])
+
+    if (!fictionList || fictionList.length === 0) {
+        return <p className="text-center text-gray-500">{emptyMessage}</p>
+    }
+
     return (
         <ul className="space-y-4">
             {fictionList.map((fiction) => (
@@ -154,6 +165,7 @@ function FictionList({ fictions, emptyMessage, allowEdit, mutate, showCreated }:
                         height={120}
                         className="rounded-md object-cover"
                     />
+
                     <div className="ml-4 flex-1">
                         <Link href={`/f/${fiction.id}`}>
                             <h3 className="text-lg font-semibold text-gray-800 hover:text-blue-600">{fiction.title}</h3>
