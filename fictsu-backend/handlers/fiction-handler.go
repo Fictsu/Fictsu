@@ -1,19 +1,17 @@
 package handlers
 
 import (
-	"database/sql"
-	"fmt"
-	"net/http"
-	"strconv"
 	"time"
-
+	"strconv"
+	"net/http"
+	"database/sql"
+	"github.com/lib/pq"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
-	"github.com/lib/pq"
 
-	configs "github.com/Fictsu/Fictsu/configs"
 	db "github.com/Fictsu/Fictsu/database"
 	models "github.com/Fictsu/Fictsu/models"
+	configs "github.com/Fictsu/Fictsu/configs"
 )
 
 func GetAllFictions(ctx *gin.Context) {
@@ -49,13 +47,11 @@ func GetAllFictions(ctx *gin.Context) {
 			&fiction.Synopsis,
 			&fiction.Created,
 		); err != nil {
-			fmt.Println("err is:", err)
 			ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"Error": "Error processing fictions"})
 			return
 		}
 
 		fictions = append(fictions, fiction)
-		fmt.Println(fictions)
 	}
 
 	ctx.IndentedJSON(http.StatusOK, fictions)
@@ -251,11 +247,6 @@ func EditFiction(ctx *gin.Context, store *sessions.CookieStore) {
 	query := "UPDATE Fictions SET "
 	params := []interface{}{}
 	paramIndex := 1
-	// if fictionUpdateRequest.Cover != "" {
-	// 	query += "Cover = $" + strconv.Itoa(paramIndex) + ", "
-	// 	params = append(params, fictionUpdateRequest.Cover)
-	// 	paramIndex++
-	// }
 
 	if fictionUpdateRequest.Title != "" {
 		query += "Title = $" + strconv.Itoa(paramIndex) + ", "
