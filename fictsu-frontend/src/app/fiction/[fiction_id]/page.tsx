@@ -9,6 +9,7 @@ import FavoriteButton from "@/components/FavoriteButton"
 
 export default function FictionPage() {
     const { fiction_id } = useParams()
+
     const [loading, setLoading] = useState(true)
     const [fiction, setFiction] = useState<Fiction | null>(null)
     const [showFullSynopsis, setShowFullSynopsis] = useState(false)
@@ -48,12 +49,13 @@ export default function FictionPage() {
     return (
         <div className="max-w-screen-xl mx-auto px-24 mt-6 mb-6">
             <div className="flex flex-col md:flex-row gap-6 border border-gray-600 p-6 rounded-lg bg-gray-900">
+
                 <div className="relative w-[250px] h-[375px] flex-shrink-0">
                     <Image
                         src={fiction.cover || "/default-cover.png"}
-                        alt={fiction.title}
                         width={250}
                         height={375}
+                        alt={fiction.title}
                         className="rounded-lg object-cover w-full h-full"
                     />
                     <div className="absolute bottom-2 right-2">
@@ -80,8 +82,8 @@ export default function FictionPage() {
 
                     <div className="mt-4 break-words">
                         <div
+                            dangerouslySetInnerHTML={{ __html: fiction.synopsis }}
                             className={`formatted-content overflow-hidden transition-all text-gray-350 ${showFullSynopsis ? "max-h-full" : "max-h-[100px]"}`}
-                            dangerouslySetInnerHTML={{ __html: fiction.synopsis }} // Renders the synopsis with HTML tags
                         />
                         {fiction.synopsis.length > 200 && (
                             <button
@@ -99,6 +101,7 @@ export default function FictionPage() {
             {fiction.genres?.length > 0 && (
                 <section className="mt-6 border border-gray-600 p-4 rounded-lg bg-gray-900">
                     <h2 className="text-xl font-semibold text-gray-400">Genres</h2>
+
                     <div className="flex flex-wrap gap-2 mt-2">
                         {fiction.genres.map((genre) => (
                             <span key={genre.id} className="bg-gray-700 px-3 py-1 rounded-lg text-sm text-gray-400">
@@ -113,6 +116,7 @@ export default function FictionPage() {
             {fiction.chapters?.length > 0 && (
                 <section className="mt-6 border border-gray-600 p-4 rounded-lg bg-gray-900">
                     <h2 className="text-xl font-semibold text-gray-400">Chapters</h2>
+
                     <ul className="mt-2 space-y-2">
                         {fiction.chapters.map((chapter) => (
                             <Link key={chapter.id} href={`/f/${fiction.id}/${chapter.id}`} className="block">
