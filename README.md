@@ -26,8 +26,8 @@ Make sure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/fictsu/fictsu.git
-cd fictsu
+git clone https://github.com/Fictsu/Fictsu.git
+cd Fictsu
 ```
 
 ### 2. Start the Project
