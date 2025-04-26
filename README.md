@@ -41,6 +41,7 @@ cp fictsu-backend/.env.example fictsu-backend/.env
 
 > 🔑 Update the `.env` file with your own credentials:
 > - Google OAuth Client ID & Secret
+> - OpenAI Key & Secret
 > - Firebase credentials
 
 ### 🔐 Setting Up Required Secrets
